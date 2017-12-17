@@ -1,0 +1,454 @@
+#
+# (c) 2017 elias/vanissoft
+#
+# Initial data
+#
+"""
+	cols = "id,issuer,dynamic_asset_data_id,symbol,precision,description_main,description_market,\
+			description_short_name,market_fee_percent,issuer_permissions,flags,max_supply,options".split(",")
+
+	p.hset("asset1:" + b['symbol'], k, json.dumps(b[k]))
+	p.hset("asset2:" + b['id'], k, json.dumps(b[k]))
+
+	Store of data:
+		Redisdb.set("open_positions", json.dumps(ob))
+		hset("market_history:BRIDE/BTS", "2017-11-27", "123123.232@232.23")
+
+
+	Progress indicators:
+		Redisdb.set("status:loading_assets", 0)
+		set("status:market:BRIDGE/BTS", "FIRST|LAST")
+
+	Bus:
+		Redisdb.rpush("datafeed", json.dumps({'orderbook': {'market': mkt, 'date': arrow.utcnow().isoformat(), 'data': buys}}))
+
+
+	RPC calls
+	=========
+	Last trades:
+		Bitshares.rpc.get_fill_order_history("1.3.121", "1.3.0", 100, api_id=3)
+		{'id': '0.0.10874385',
+			'op': {'fee': {'amount': 0, 'asset_id': '1.3.0'},
+					'account_id': '1.2.126225', 'order_id': '1.7.42662694',
+					'pays': {'amount': 20953, 'asset_id': '1.3.121'},
+					'receives': {'amount': 1197306, 'asset_id': '1.3.0'}},
+			'key': {'base': '1.3.0', 'sequence': -1081491, 'quote': '1.3.121'},
+			'time': '2017-12-11T10:11:45'}
+
+	Account history:
+		Bitshares.rpc.get_account_history("1.2.203202", "1.11.99", 100, "1.11.0", api_id=3)
+			# place order
+			[{'trx_in_block': 1, 'op_in_trx': 0, 'id': '1.11.102636158',
+				'op': [1, {'extensions': [], 'seller': '1.2.203202',
+						'fee': {'amount': 1213, 'asset_id': '1.3.0'},
+						'fill_or_kill': False,
+						'amount_to_sell': {'amount': 37149320, 'asset_id': '1.3.1093'},
+						'min_to_receive': {'amount': 3529185, 'asset_id': '1.3.121'},
+						'expiration': '2022-12-11T10:07:37'}],
+				'virtual_op': 15417, 'result': [1, '1.7.42662747'], 'block_num': 22554386},
+			# place order
+			{'trx_in_block': 1, 'op_in_trx': 0, 'id': '1.11.102636105',
+				'op': [1, {'extensions': [], 'seller': '1.2.203202',
+						'fee': {'amount': 1213, 'asset_id': '1.3.0'},
+						'fill_or_kill': False,
+						'amount_to_sell': {'amount': 30000000, 'asset_id': '1.3.1093'},
+						'min_to_receive': {'amount': 1060499, 'asset_id': '1.3.121'},
+						'expiration': '2022-12-11T10:07:03'}],
+				'virtual_op': 15304, 'result': [1, '1.7.42662720'], 'block_num': 22554375},
+			# cancel order
+			{'trx_in_block': 1, 'op_in_trx': 0, 'id': '1.11.102635933',
+				'op': [2, {'fee': {'amount': 121, 'asset_id': '1.3.0'}, 'extensions': [],
+						'order': '1.7.42662012', 'fee_paying_account': '1.2.203202'}],
+				'virtual_op': 14876, 'result': [2, {'amount': 67149320, 'asset_id': '1.3.1093'}], 'block_num': 22554358},
+			# place order
+			{'trx_in_block': 1, 'op_in_trx': 0, 'id': '1.11.102633852',
+				'op': [1, {'extensions': [], 'seller': '1.2.203202', 'fee': {'amount': 1213, 'asset_id': '1.3.0'},
+							'fill_or_kill': False,
+							'amount_to_sell': {'amount': 67149320, 'asset_id': '1.3.1093'},
+							'min_to_receive': {'amount': 2283076, 'asset_id': '1.3.121'},
+							'expiration': '2022-12-11T09:50:25'}],
+				'virtual_op': 10097, 'result': [1, '1.7.42662012'], 'block_num': 22554063},
+			# fill order
+			{'trx_in_block': 7, 'op_in_trx': 2, 'id': '1..102633818',
+				'op': [4, {'fee': {'amount': 902, 'asset_id': '1.3.1093'},
+							'account_id': '1.2.203202',
+							'order_id': '1.7.42661962',
+							'pays': {'amount': 27980, 'asset_id': '1.3.121'},
+							'receives': {'amount': 902581, 'asset_id': '1.3.1093'}}],
+					'virtual_op': 10024, 'result': [0, {}], 'block_num': 22554057},
+
+	Balances:
+		Bitshares.rpc.get_account_balances(BTS_ACCOUNT_ID, [])
+			[{'asset_id': '1.3.0', 'amount': 1144690707},
+			{'asset_id': '1.3.743', 'amount': 496859},
+			{'asset_id': '1.3.822', 'amount': '8214856726'},
+			{'asset_id': '1.3.858', 'amount': 1414936},
+			{'asset_id': '1.3.861', 'amount': 5231},
+			{'asset_id': '1.3.1042', 'amount': 1},
+			{'asset_id': '1.3.1093', 'amount': 49499},
+			{'asset_id': '1.3.1152', 'amount': 4892075},
+			{'asset_id': '1.3.1325', 'amount': 17723532},
+			{'asset_id': '1.3.1564', 'amount': '7646023351'},
+			{'asset_id': '1.3.1999', 'amount': 182362526},
+			{'asset_id': '1.3.2298', 'amount': 40},
+			{'asset_id': '1.3.2379', 'amount': 250}]
+
+
+"""
+
+
+
+
+from config import *
+import asyncio
+import json
+import arrow
+
+
+def init():
+	"""
+	Loads initial data from Bitshares Blockchain
+	*
+	:return:
+	"""
+	# TODO: obtain the last block number
+	# TODO: retrieve account history
+	# TODO: load balances
+	# TODO: load open positions
+
+	from bitshares import account
+
+	async def load_assets():
+		"""
+		Load all the Bitshares assets.
+		:return:
+		"""
+		print("bitshares_data.init > load_assets")
+		def write(batch):
+			"""
+			Writes assets to DB
+			:param batch:
+			:return:
+			"""
+			p = Redisdb.pipeline()
+			for b in batch:
+				for k in b.keys():
+					if k == 'options':
+						p.hset("asset1:" + b['symbol'], k, json.dumps(b[k]))
+						p.hset("asset2:" + b['id'], k, json.dumps(b[k]))
+					else:
+						p.hset("asset1:" + b['symbol'], k, b[k])
+						p.hset("asset2:" + b['id'], k, b[k])
+			p.incr("status:loading_assets", 100)
+			p.execute()
+
+		Redisdb.set("status:loading_assets", 0)
+		cols = "id,issuer,dynamic_asset_data_id,symbol,precision,description_main,description_market,\
+				description_short_name,market_fee_percent,issuer_permissions,flags,max_supply,options".split(",")
+		next_asset = ""
+		while True:
+			dassets = []
+			assets = Bitshares.rpc.list_assets(next_asset, 100)
+			for a in assets:
+				row = {}
+				for col in a.keys():
+					if col in cols:
+						row[col] = a[col]
+				for col in a['options'].keys():
+					if col in cols:
+						row[col] = a['options'][col]
+				row['description_main'] = ''
+				row['description_market'] = ''
+				row['description_short_name'] = ''
+				if a['options']['description'][:1] == "{":
+					desc = json.loads(a['options']['description'])
+					row['description_main'] = desc['main']
+					if 'market' in desc:
+						row['description_market'] = desc['market']
+					if 'short_name' in desc:
+						row['description_short_name'] = desc['short_name']
+				else:
+					row['description_main'] = a['options']['description']
+				dassets.append(row)
+			write(dassets)
+			next_asset = a['symbol'] + " "
+			if len(assets) < 100:
+				break
+		Redisdb.set("status:loading_assets", len(assets))
+		print("bitshares_data.init > load_assets end")
+
+
+	tasks = [asyncio.ensure_future(load_assets())]
+
+	loop = asyncio.get_event_loop()
+	loop.run_until_complete(asyncio.wait(tasks))
+
+	Redisdb.bgsave()
+	print("end")
+
+
+
+# TODO: dismissed in favour of limit_orders
+def datatables():
+	"""
+	Return data relevant to datatables module.
+	:return:
+	"""
+	try:
+		opos = json.loads(Redisdb.get('open_positions').decode('utf8'))
+	except Exception as err:
+		opos = None
+		print(err.__repr__())
+	rtn = {'open_positions': opos}
+	return rtn
+
+
+def limitorders():
+	"""
+	Return data relevant to limitorders module.
+	At starts
+	:return:
+	"""
+	return None
+
+
+
+def dashboard():
+	return []
+
+
+
+
+
+
+
+
+def blockchain_listener():
+	"""
+	Execute forever listening blockchain operations
+	:return:
+	"""
+	from bitshares.blockchain import Blockchain
+	chain = Blockchain()
+	for block in chain.blocks():
+		#print("listenet:", block)
+		Redisdb.rpush("bitshares_op", pickle.dumps(block))
+
+
+
+def operations_listener():
+
+	async def get_balances():
+		rtn = Bitshares.rpc.get_account_balances(BTS_ACCOUNT_ID, [])
+		bal = []
+		for r in rtn:
+			prec = int(Redisdb.hget("asset2:" + r['asset_id'], 'precision'))
+			symbol = Redisdb.hget("asset2:" + r['asset_id'], 'symbol').decode('utf8')
+			amount = round(r['amount'] / 10**prec, prec)
+			bal.append([symbol, amount])
+		Redisdb.rpush("datafeed", json.dumps({'balances': bal}))
+
+
+	async def get_orderbook(mkt):
+		pairs = mkt.split("/")
+		p1 = Redisdb.hget("asset1:" + pairs[0], 'id').decode('utf8')
+		p1_prec = int(Redisdb.hget("asset1:" + pairs[0], 'precision'))
+		p2 = Redisdb.hget("asset1:" + pairs[1], 'id').decode('utf8')
+		p2_prec = int(Redisdb.hget("asset1:" + pairs[1], 'precision'))
+		rtn = Bitshares.rpc.get_limit_orders(p1, p2, 5000)
+
+		dat = []
+		for pos in rtn:
+			if p1 == pos['sell_price']['quote']['asset_id']:  # buy
+				amount_base = int(pos['sell_price']['base']['amount']) / 10 ** p2_prec
+				amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** p1_prec
+				price = round(amount_base / amount_quote, p2_prec)
+				total = round(amount_quote * price, p2_prec)
+				op = 'buy'
+			else:  # sell
+				amount_base = int(pos['sell_price']['base']['amount']) / 10 ** p1_prec
+				amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** p2_prec
+				price = round(amount_quote / amount_base, p2_prec)
+				total = round(amount_base*price, p2_prec)
+				op = 'sell'
+			dat.append([op, price, total])
+		buys = [x for x in dat if x[0]=='buy']
+		buys.sort(key=lambda x: x[1], reverse=True)
+		best_offer = 0.00001
+		if len(buys) > 0:
+			best_offer = buys[0][1]
+		acum = 0
+		for x in buys:
+			acum += x[2]
+			x.append(acum)
+		buys.sort(key=lambda x: x[3], reverse=True)
+
+		sells = [x for x in dat if x[0]=='sell']
+		sells.sort(key=lambda x: x[1], reverse=False)
+		acum = 0
+		for x in sells:
+			acum += x[2]
+			x.append(acum)
+		sells.sort(key=lambda x: x[3], reverse=False)
+
+		buys.extend([s for s in sells if s[1] < best_offer * 5])
+		buys.sort(key=lambda x: x[1])
+
+		print("orderbook", mkt)
+		Redisdb.rpush("datafeed", json.dumps({'orderbook': {'market': mkt, 'date': arrow.utcnow().isoformat(), 'data': buys}}))
+
+
+	async def get_open_positions():
+		account_data = Bitshares.rpc.get_full_accounts([BTS_ACCOUNT], False)[0][1]
+		# {'top_n_control_flags': 0, 'statistics': '2.6.203202', 'id': '1.2.203202', 'membership_expiration_date': '1969-12-31T23:59:59', 'lifetime_referrer': '1.2.203202', 'lifetime_referrer_fee_percentage': 8000, 'blacklisting_accounts': [], 'options': {'num_committee': 3, 'extensions': [], 'votes': ['0:91', '0:147', '0:173', '2:194', '2:224', '2:231', '2:233'], 'voting_account': '1.2.266887', 'memo_key': 'BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 'num_witness': 0}, 'referrer_rewards_percentage': 0, 'name': 'tximiss0', 'active': {'weight_threshold': 1, 'key_auths': [['BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 1]], 'address_auths': [], 'account_auths': [['1.2.446518', 1]]}, 'referrer': '1.2.203202', 'owner_special_authority': [0, {}], 'whitelisting_accounts': [], 'network_fee_percentage': 2000, 'registrar': '1.2.203202', 'active_special_authority': [0, {}], 'owner': {'weight_threshold': 1, 'key_auths': [['BTS7QyUi34KRVmRR4wqTevosoz4BrKGMfR5HFVSmAW17DfUXkTYEK', 1]], 'address_auths': [], 'account_auths': []}, 'cashback_vb': '1.13.2164', 'blacklisted_accounts': [], 'whitelisted_accounts': []}
+		limit_orders = account_data['limit_orders']
+
+		ob = []
+		base_coins = 'BTS,USD,CNY,RUB'.split(",")
+		for lo in limit_orders:
+			quote =  lo['sell_price']['quote']['asset_id']
+			base = lo['sell_price']['base']['asset_id']
+			quote_asset = [Redisdb.hget("asset2:"+quote, 'symbol').decode('utf8'), int(Redisdb.hget("asset2:"+quote, 'precision'))]
+			base_asset =  [Redisdb.hget("asset2:"+base, 'symbol').decode('utf8'), int(Redisdb.hget("asset2:"+base, 'precision'))]
+			date = arrow.get(lo['expiration']).shift(years=-5).isoformat()
+			try:
+				amount_quote = round(int(lo['sell_price']['quote']['amount']) / 10 ** quote_asset[1], quote_asset[1])
+				amount_base = round(int(lo['sell_price']['base']['amount']) / 10 ** base_asset[1], base_asset[1])
+			except Exception as err:
+				print(err.__repr__())
+			if base_asset[0] in base_coins:  # buy
+				price = round(amount_base/amount_quote, base_asset[1])
+				total = round(amount_quote*price, base_asset[1])
+				print("buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, date)
+				ob.append(["buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, total, date, quote_asset[1], base_asset[1]])
+			else:
+				price = round(amount_quote/amount_base, base_asset[1])
+				total = round(amount_base*price, base_asset[1])
+				print("sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, date)
+				ob.append(["sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, total, date, base_asset[1], quote_asset[1]])
+
+		Redisdb.rpush("datafeed", json.dumps({'open_positions': ob}))
+		#Redisdb.set("open_positions", json.dumps(ob))
+		# enqueues orderbooks recovering
+
+	def normalize_isoformat(dat):
+		if len(dat) < 32:
+			part = dat.split("+")
+			return part[0]+".000000+"+part[1]
+		else:
+			return dat
+
+
+	async def get_market_trades(mkt, date_from, date_to):
+		pairs = mkt.split("/")
+		quote = Redisdb.hget("asset1:" + pairs[0], 'id').decode('utf8')  # quote
+		quote_prec = int(Redisdb.hget("asset1:" + pairs[0], 'precision'))
+		base = Redisdb.hget("asset1:" + pairs[1], 'id').decode('utf8')  # base
+		base_prec = int(Redisdb.hget("asset1:" + pairs[1], 'precision'))
+
+		date_end = arrow.utcnow()
+		date_init = date_end.shift(months=-1)
+		print(mkt, date_init, date_end)
+		movs = []
+		while True:
+			th = Bitshares.rpc.get_market_history(base, quote, 3600, date_init.isoformat(), date_end.isoformat(), api_id=3)
+			if len(th) == 0:
+				return
+			th.sort(key=lambda x: x['key']['open'])
+			for t in th:
+				dat = {}
+				try:
+					dat['open'] = round(
+						(float(t['open_base']) / 10 ** base_prec) / (float(t['open_quote']) / 10 ** quote_prec),
+						base_prec)
+					if t['close_quote'] == 0:
+						dat['close'] = dat['open']
+					else:
+						dat['close'] = round((float(t['close_base']) / 10 ** base_prec) / (float(t['close_quote']) / 10 ** quote_prec), base_prec)
+					if t['high_quote'] == 0:
+						if dat['open'] > dat['close']:
+							dat['high'] = dat['open']
+						else:
+							dat['high'] = dat['close']
+					else:
+						dat['high'] = round((float(t['high_base'])/10**base_prec) / (float(t['high_quote'])/10**quote_prec), base_prec)
+					if t['low_quote'] == 1:
+						if dat['open'] < dat['close']:
+							dat['low'] = dat['open']
+						else:
+							dat['low'] = dat['close']
+					else:
+						dat['low'] = round((float(t['low_base'])/10**base_prec) / (float(t['low_quote'])/10**quote_prec), base_prec)
+					dat['volume'] = round(float(t['base_volume'])/10**base_prec, base_prec)
+					dat['date'] = t['key']['open']
+					movs.append([dat['date'], dat['open'], dat['close'], dat['low'], dat['high'], dat['volume']])
+				except Exception as err:
+					print("error", err.__repr__())
+					print(t['high_base'], t['high_quote'], t['low_base'], t['low_quote'])
+					continue
+			if len(th) < 200:
+				break
+			date_init = arrow.get(th[-1]['key']['open']).shift(seconds=+0.01)
+			print("  ", date_init, date_end)
+
+		if len(movs) > 0:
+			movs.sort(key=lambda x: x[0])
+			movs = movs[-100:]
+			movs2 = [["2004-01-02", 10452.74, 10409.85, 10367.41, 10554.96, 168890000],
+				["2004-01-05", 10411.85, 10544.07, 10411.85, 10575.92, 221290000],
+				["2004-01-06", 10543.85, 10538.66, 10454.37, 10584.07, 191460000],
+				["2004-01-07", 10535.46, 10529.03, 10432, 10587.55, 225490000],
+				["2004-04-20", 10437.85, 10314.5, 10297.39, 10530.61, 204710000],
+				["2004-04-21", 10311.87, 10317.27, 10200.38, 10398.53, 232630000],
+				["2004-04-22", 10314.99, 10461.2, 10255.88, 10529.12, 265740000]]
+			#movs.sort(key=lambda x: x[0])
+			Redisdb.rpush("datafeed", json.dumps({'market_trades': {'market': mkt, 'data': movs}}))
+
+
+
+	async def do_ops(op):
+		try:
+			dat = json.loads(op.decode('utf8'))
+		except Exception as err:
+			print(err.__repr__())
+			return
+		if dat['what'] == 'orderbook':
+			await get_orderbook(dat['market'])
+		elif dat['what'] == 'open_positions':
+			await get_open_positions()
+		elif dat['what'] == 'get_market_trades':
+			await get_market_trades(dat['market'], dat['date_from'], dat['date_to'])
+		elif dat['what'] == 'get_balances':
+			await get_balances()
+
+
+	async def do_operations():
+		while True:
+			op = Redisdb.lpop("operations")
+			if op is None:
+				op = Redisdb.lpop("operations_bg")
+				await asyncio.sleep(.01)
+				if op is None:
+					continue
+			await do_ops(op)
+
+
+	asyncio.get_event_loop().run_until_complete(do_operations())
+
+
+
+if __name__ == "__main__":
+	import sys
+	if len(sys.argv) > 1:
+		if 'init' in sys.argv[1]:
+			init()
+		elif 'blockchain_listener' in sys.argv[1]:
+			blockchain_listener()
+		elif 'operations_listener' in sys.argv[1]:
+			operations_listener()
+	else:
+		# init is necesary the first run for load the assets
+		#init()
+
+		# runs in bg, invoked in main
+		operations_listener()
