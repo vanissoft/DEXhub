@@ -1,7 +1,7 @@
 #
 # (c) 2017 elias/vanissoft
 #
-# Initial data
+# Bitshares comm
 #
 """
 	cols = "id,issuer,dynamic_asset_data_id,symbol,precision,description_main,description_market,\
