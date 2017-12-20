@@ -159,6 +159,7 @@ async def broker():
 
 
 if __name__ == '__main__':
+	# Develop switch conmute between queue and direct work. True for be able to put Breakpoints
 	Develop = ('Z68X' in socket.getfqdn()) and True
 	proc1 = subprocess.Popen("redis-server --port "+str(REDIS_PORT), shell=True)
 	while True:

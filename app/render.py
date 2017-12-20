@@ -14,7 +14,7 @@ def template():
 class Render():
 	"""
 	t = Render('index.html').render()
-	Sustituye marcadores ${var} por su valor o por el fichero que referencia
+	Replaces ${file.html} with the contents of file.html
 	${v1}    ${header.html}
 	"""
 

@@ -18,6 +18,7 @@ jq = window.jQuery
 
 Menu_binds = {
 	'link_limitorders': 'limit_orders.html',
+	'link_settings': 'settings.html',
 	'link_dashboard': 'dashboard.html', 'link_metrics': 'metrics.html', 'link_usage': 'usage.html',
 	'link_activity': 'activity.html', 'link_panels': 'panels.html', 'link_typography': 'typography.html',
 	'link_icons': 'icons.html', 'link_buttons': 'buttons.html', 'link_tabs': 'tabs.html', 'link_modals': 'modals.html',
@@ -55,7 +56,6 @@ wglobals.set_timer(0, init_data, 0.1)
 def html_loaded(url, rtn):
 	global ws_comm, Active_module
 	document['page_container'].innerHTML = rtn
-	print("url:", url)
 	if 'dashboard' in url:
 		import wmoddashboard
 		Active_module = wmoddashboard
