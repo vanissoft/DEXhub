@@ -71,6 +71,9 @@ def html_loaded(url, rtn):
 	elif 'limit_orders' in url:
 		import wmodlimitorders
 		Active_module = wmodlimitorders
+	elif 'settings' in url:
+		import wmodsettings
+		Active_module = wmodsettings
 	else:
 		return False
 	if Active_module is not None:
