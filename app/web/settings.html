@@ -31,47 +31,23 @@
                     <div id="tab-1" class="tab-pane active">
                         <div class="panel-body">
                             <strong class="c-white">Account related settings</strong>
-                            <p>Multiple accounts can be entered for a consolidation of the balances.</p>
+                            <p>Multiple accounts can be entered for a consolidation of the balances1.</p>
                             <br>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead>
-                                    <tr>
-                                        <th>Familiar name</th>
-                                        <th>Bitshares account</th>
-                                        <th>Has wif key</th>
-                                        <th>Operations</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <tr>
-                                        <td>Abraham</td>
-                                        <td>076 9477 4896</td>
-                                        <td>Vosselaar</td>
-                                        <td><button id="bDelAccount1" class="btn btn-accent btn-sm">Delete</button></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Phelan</td>
-                                        <td>0500 034548</td>
-                                        <td>Lavoir</td>
-                                        <td><button id="bDelAccount2" class="btn btn-accent btn-sm">Delete</button></td>
-                                    </tr>
-                                    </tbody>
-                                </table>
+                            <div id="table1" class="table-responsive">
                             </div>
                             <br>
                             <button id="bNewAccount" class="btn btn-accent btn-sm">New Account</button>
                             <br><br>
-                            <form>
-                                <div class="form-group"><label for="exampleInputName">Bitshares account name</label> <input type="text" class="form-control" id="exampleInputName" placeholder="Name">
+							<div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
+                                <div class="form-group"><label for="iName">Bitshares account name</label> <input type="text" class="form-control" id="iName" placeholder="Name">
                                     <p class="help-block">Must be a real account in Bitshares</p></div>
-                                <div class="form-group"><label for="exampleInputEmail1">Familiar name</label> <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Name">
+                                <div class="form-group"><label for="iFamiliar">Familiar name</label> <input type="email" class="form-control" id="iFamiliar" placeholder="Name">
                                     <p class="help-block">Used for display</p></div>
-                                <div class="form-group"><label for="exampleInputPassword1">Wif key</label> <input type="password" class="form-control" id="exampleInputPassword1" placeholder="wif format">
+                                <div class="form-group"><label for="iWifkey">Wif key</label> <input type="password" class="form-control" id="iWifkey" placeholder="wif format">
                                     <p class="help-block">Key will be stored in encrypted form</p></div>
 
-                                <button type="submit" class="btn btn-default">Save</button>
-                            </form>
+                                <button id="bSave" class="btn btn-default">Save</button>  <button id="bCancel" class="btn btn-default">Cancel</button>
+                            </div>
                         </div>
                     </div>
                     <div id="tab-2" class="tab-pane">

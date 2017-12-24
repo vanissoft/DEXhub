@@ -13,6 +13,7 @@
 	Store of data:
 		Redisdb.set("open_positions", json.dumps(ob))
 		hset("market_history:BRIDE/BTS", "2017-11-27", "123123.232@232.23")
+		Redisdb.set("settings_accounts", json.dumps(accounts))
 
 
 	Progress indicators:
@@ -404,9 +405,41 @@ def operations_listener():
 			#movs.sort(key=lambda x: x[0])
 			Redisdb.rpush("datafeed", json.dumps({'market_trades': {'market': mkt, 'data': movs}}))
 
+	async def get_settings_account_list():
+		rtn = Redisdb.get("settings_accounts")
+		if rtn is None:
+			accounts = []
+		else:
+			accounts = json.loads(rtn.decode('utf8'))
+		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
+
+	async def settings_account_new(dat):
+		rtn = Redisdb.get("settings_accounts")
+		if rtn is None:
+			accounts = []
+		else:
+			accounts = json.loads(rtn.decode('utf8'))
+		accounts.append(dat)
+		Redisdb.set("settings_accounts", json.dumps(accounts))
+		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
+
+	async def settings_account_del(id):
+		rtn = Redisdb.get("settings_accounts")
+		if rtn is None:
+			accounts = []
+		else:
+			accounts = json.loads(rtn.decode('utf8'))
+			accounts.pop(id)
+			Redisdb.set("settings_accounts", json.dumps(accounts))
+		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
 
 
 	async def do_ops(op):
+		"""
+		Process the enqueued operations.
+		:param op:
+		:return:
+		"""
 		try:
 			dat = json.loads(op.decode('utf8'))
 		except Exception as err:
@@ -420,6 +453,12 @@ def operations_listener():
 			await get_market_trades(dat['market'], dat['date_from'], dat['date_to'])
 		elif dat['what'] == 'get_balances':
 			await get_balances()
+		elif dat['what'] == 'account_list':
+			await get_settings_account_list()
+		elif dat['what'] == 'new_account':
+			await settings_account_new(dat['data'])
+		elif dat['what'] == 'del_account':
+			await settings_account_del(dat['id'])
 
 
 	async def do_operations():
