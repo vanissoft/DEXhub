@@ -18,15 +18,22 @@ def init(comm):
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
 	Ws_comm.send({'operation': 'enqueue', 'module': "settings", 'what': 'account_list'})
+	Ws_comm.send({'operation': 'enqueue', 'module': "settings", 'what': 'get_settings_misc'})
 	document["bNewAccount"].bind('click', click_new_account)
 	document["bSave"].bind('click', click_save_account)
 	document["bCancel"].bind('click', click_save_cancel)
 
+	document["bSaveMisc"].bind('click', click_save_misc)
+
 def click_new_account(ev):
 	# toggle form visible
 	jq('#form1').removeClass('hidden')
-	print("new account")
-	pass
+
+def click_save_misc(ev):
+	print("save misc")
+	dat = {'master_password': document['iMPpassphraseSet'].value}
+	Ws_comm.send({'operation': 'enqueue', 'module': "settings", 'what': 'save_misc_settings', 'data': dat})
+
 
 def click_save_account(ev):
 	jq('#form1').addClass('hidden')
@@ -72,4 +79,8 @@ def incoming_data(data):
 		for n in range(0, num):
 			document["bDelAccount_{}".format(n)].bind('click', click_del_account)
 
-		print("innerhtml replace")
+
+	elif 'settings_misc' in data['data']:
+		for k in data['data']['settings_misc']:
+			if k == 'master_password':
+				document['iMPpassphraseSet'].value = data['data']['settings_misc'][k]

@@ -32,6 +32,12 @@ ${head.html}
                     <input type="text" class="form-control" placeholder="Placeholder" style="width: 175px">
                 </form>
                 <ul class="nav navbar-nav navbar-right">
+
+                    <li class="dropdown">
+                        <a role="button" id="link_master_password" data-toggle="modal" data-target="#modal_master_password"> Unlock
+                            <span id="unlock_status" class="pe pe-7s-lock pull-left" style="font-size: 24px;"></span></a>
+                    </li>
+
                     <li class="dropdown">
                         <a href="versions.html" >Versions
                             <span class="label label-warning pull-right">2</span>
@@ -56,9 +62,28 @@ ${head.html}
 
     <!-- Main content-->
     <section class="content">
-            <div class="container-fluid" id="page_container">
-
+        <div class="modal fade" id="modal_master_password" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header text-center">
+                        <h4 class="modal-title">Master Password</h4>
+                        <small>Unlocks wif keys for doing operations.</small>
+                    </div>
+                    <div class="modal-body">
+                            <div class="form-group"><label for="iMPpasshrase">Master password</label> <input type="text" class="form-control" id="iMPpasshrase" placeholder="passphrase">
+                                <p class="help-block">Case sensitive</p></div>
+                        <p id="MPerror"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                        <button id="bMPunlock" type="button" class="btn btn-accent">Unlock!</button>
+                    </div>
+                </div>
             </div>
+        </div>
+        <div class="container-fluid" id="page_container">
+
+        </div>
     </section>
     <!-- End main content-->
 

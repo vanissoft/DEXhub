@@ -38,25 +38,31 @@
                             <br>
                             <button id="bNewAccount" class="btn btn-accent btn-sm">New Account</button>
                             <br><br>
-							<div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
+                            <div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
                                 <div class="form-group"><label for="iName">Bitshares account name</label> <input type="text" class="form-control" id="iName" placeholder="Name">
                                     <p class="help-block">Must be a real account in Bitshares</p></div>
                                 <div class="form-group"><label for="iFamiliar">Familiar name</label> <input type="email" class="form-control" id="iFamiliar" placeholder="Name">
                                     <p class="help-block">Used for display</p></div>
-                                <div class="form-group"><label for="iWifkey">Wif key</label> <input type="password" class="form-control" id="iWifkey" placeholder="wif format">
-                                    <p class="help-block">Key will be stored in encrypted form</p></div>
-
-                                <button id="bSave" class="btn btn-default">Save</button>  <button id="bCancel" class="btn btn-default">Cancel</button>
+                                <div class="form-group"><label for="iWifkey">Wif key</label> <input type="password" class="form-control disabled" id="iWifkey" placeholder="wif format">
+                                    <p class="help-block">Key will be stored in UNencrypted form</p></div>
+                                <button id="bSave" class="btn btn-accent">Save</button>
+                                <button id="bCancel" class="btn btn-default">Cancel</button>
                             </div>
                         </div>
                     </div>
                     <div id="tab-2" class="tab-pane">
                         <div class="panel-body">
                             <strong class="c-white">Connection settings</strong>
+                            <p>wss://bitshares.openledger.info/ws</p>
                             <p>Node preferences</p>
-
+                            <br>
+                            <div class="form-group"><label for="iMPpassphraseSet">Master password</label> <input type="text" class="form-control" id="iMPpassphraseSet" placeholder="passphrase">
+                                <p class="help-block">Password for unlock Wif keys</p></div>
+                            <br>
                             <strong class="c-white">Misc settings</strong>
                             <p>Another settings</p>
+                            <br>
+                            <button id="bSaveMisc" class="btn btn-accent">Save</button>
                         </div>
                     </div>
 

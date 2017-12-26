@@ -39,15 +39,19 @@ Active_module = None
 
 def ws_received(data):
 	global ws_comm
-	print("wmain.ws_received")
-	Active_module.incoming_data(data)
+	if 'master_unlock' in data['data']:
+		master_unlock_rtn(data['data'])
+	elif 'message' in data['data']:
+		message(data['data'])
+	else:
+		Active_module.incoming_data(data)
 
 
 ws_comm = wwebsockets.Wscomm("ws://127.0.0.1:8808/comm", ws_received)
 
 def init_data():
 	if ws_comm.open:
-		ws_comm.send({'operation': 'enqueue', 'module': "main", 'what': 'open_positions'})
+		#ws_comm.send({'operation': 'enqueue', 'module': "main", 'what': 'open_positions'})
 		wglobals.clear_timer(0)
 
 wglobals.set_timer(0, init_data, 0.1)
@@ -119,10 +123,43 @@ def ajax_end(url, request):
 		Callbacks.popitem()[1](url, request.responseText)
 
 
+def master_unlock(ev):
+	print("unlock:", document["iMPpasshrase"].value)
+	#document['MPerror'].innerHTML = "Password doesn't match?<br>Not implemented"
+	ws_comm.send({'operation': 'enqueue', 'module': "settings", 'what': 'master_unlock', 'data': document["iMPpasshrase"].value})
+
+def master_unlock_rtn(dat):
+	jq("#unlock_status").removeClass("pe-7s-lock")
+	if not dat['master_unlock']['error']:
+		window.toastr.success('Unlocked!', None,
+			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
+		jq("#modal_master_password").modal("hide")
+		document['MPerror'].innerHTML = ""
+		jq("#unlock_status").addClass("pe-7s-unlock")
+	else:
+		window.toastr.error('Password incorrect', None,
+			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
+		document['MPerror'].innerHTML = dat['master_unlock']['message']
+		jq("#unlock_status").addClass("pe-7s-lock")
+
+
+def message(dat):
+	print("message:", dat)
+	lError = False
+	if 'error' in dat:
+		lError = dat['error']
+	if lError:
+		window.toastr.error(dat['message'], None,
+			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
+	else:
+		window.toastr.info(dat['message'], None,
+			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
+
 
 # bind menu links
 for bind in Menu_binds.items():
 	document[bind[0]].bind('click', menu_click)
 
+document["bMPunlock"].bind('click', master_unlock)
 
-print("ok2")
+window.toastr.info('Welcome to DEX HUB<br>A Bitshares portfolio manager.', None, {"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-center", "closeButton": 1, "progressBar": True})

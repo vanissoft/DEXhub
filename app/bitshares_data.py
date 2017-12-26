@@ -422,6 +422,7 @@ def operations_listener():
 		accounts.append(dat)
 		Redisdb.set("settings_accounts", json.dumps(accounts))
 		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
+		Redisdb.rpush("datafeed", json.dumps({'message': "Account created<br><strong>"+dat[0]+"</strong>"}))
 
 	async def settings_account_del(id):
 		rtn = Redisdb.get("settings_accounts")
@@ -432,6 +433,39 @@ def operations_listener():
 			accounts.pop(id)
 			Redisdb.set("settings_accounts", json.dumps(accounts))
 		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
+		Redisdb.rpush("datafeed", json.dumps({'message': "Account deleted"}))
+
+	async def settings_misc_save(dat):
+		rtn = Redisdb.get("settings_misc")
+		if rtn is None:
+			settings = {}
+		else:
+			settings = json.loads(rtn.decode('utf8'))
+		for k in dat['data']:
+			settings[k] = dat['data'][k]
+		Redisdb.set("settings_misc", json.dumps(settings))
+		Redisdb.rpush("datafeed", json.dumps({'settings_misc': settings}))
+		Redisdb.rpush("datafeed", json.dumps({'message': "settings saved"}))
+
+	async def get_settings_misc():
+		rtn = Redisdb.get("settings_misc")
+		if rtn is None:
+			settings = {}
+		else:
+			settings = json.loads(rtn.decode('utf8'))
+		Redisdb.rpush("datafeed", json.dumps({'settings_misc': settings}))
+
+	async def master_unlock(dat):
+		rtn = Redisdb.get("settings_misc")
+		if rtn is None:
+			return False
+		settings = json.loads(rtn.decode('utf8'))
+		if dat['data'] == settings['master_password']:
+			Redisdb.rpush("datafeed", json.dumps({'master_unlock': {'message': 'unlocked', 'error': False}}))
+			Redisdb.rpush("datafeed", json.dumps({'message': "Unlocked", 'error': False}))
+		else:
+			Redisdb.rpush("datafeed", json.dumps({'master_unlock': {'message': "password does not match", 'error': True}}))
+			Redisdb.rpush("datafeed", json.dumps({'message': "Password does not match", 'error': True}))
 
 
 	async def do_ops(op):
@@ -459,6 +493,12 @@ def operations_listener():
 			await settings_account_new(dat['data'])
 		elif dat['what'] == 'del_account':
 			await settings_account_del(dat['id'])
+		elif dat['what'] == 'save_misc_settings':
+			await settings_misc_save(dat)
+		elif dat['what'] == 'get_settings_misc':
+			await get_settings_misc()
+		elif dat['what'] == 'master_unlock':
+			await master_unlock(dat)
 
 
 	async def do_operations():
