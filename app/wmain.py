@@ -19,6 +19,7 @@ jq = window.jQuery
 Menu_binds = {
 	'link_limitorders': 'limit_orders.html',
 	'link_settings': 'settings.html',
+	'link_balances': 'balances.html',
 	'link_dashboard': 'dashboard.html', 'link_metrics': 'metrics.html', 'link_usage': 'usage.html',
 	'link_activity': 'activity.html', 'link_panels': 'panels.html', 'link_typography': 'typography.html',
 	'link_icons': 'icons.html', 'link_buttons': 'buttons.html', 'link_tabs': 'tabs.html', 'link_modals': 'modals.html',
@@ -78,6 +79,9 @@ def html_loaded(url, rtn):
 	elif 'settings' in url:
 		import wmodsettings
 		Active_module = wmodsettings
+	elif 'balances' in url:
+		import wmodbalances
+		Active_module = wmodbalances
 	else:
 		return False
 	if Active_module is not None:
@@ -131,14 +135,10 @@ def master_unlock(ev):
 def master_unlock_rtn(dat):
 	jq("#unlock_status").removeClass("pe-7s-lock")
 	if not dat['master_unlock']['error']:
-		window.toastr.success('Unlocked!', None,
-			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
 		jq("#modal_master_password").modal("hide")
 		document['MPerror'].innerHTML = ""
 		jq("#unlock_status").addClass("pe-7s-unlock")
 	else:
-		window.toastr.error('Password incorrect', None,
-			{"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-right", "closeButton": 1, "progressBar": True})
 		document['MPerror'].innerHTML = dat['master_unlock']['message']
 		jq("#unlock_status").addClass("pe-7s-lock")
 

@@ -62,7 +62,7 @@ def incoming_data(data):
 			return
 		document['table1'].clear()
 		t1 = '<table class="table table-bordered table-hover"><thead><tr>' + \
-			'<th>Familiar name</th><th>Bitshares account</th><th>wif key</th><th>Operations</th>' + \
+			'<th>Familiar name</th><th>Bitshares account</th><th>wif key</th><th>id</th><th>Operations</th>' + \
 			'</tr></thead><tbody>'
 		t2 = ''
 		num = 0
