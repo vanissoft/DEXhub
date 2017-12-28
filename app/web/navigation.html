@@ -8,9 +8,23 @@
                 <a role="button" id="link_dashboard">Dashboard (template)</a>
             </li>
             <li><a role="button" id="link_balances">Balances</a></li>
-            <li><a role="button" id="link_limitorders">Limit orders</a></li>
             <li><a role="button" id="link_settings">Settings</a></li>
-            <li><a role="button" id="link_datatables">Data tables (template)</a></li>
+
+            <li>
+                <a href="#limitorders" data-toggle="collapse" aria-expanded="false">
+                    Limit Orders<span class="sub-nav-icon"> <i class="stroke-arrow"></i> </span>
+                </a>
+                <ul id="limitorders" class="nav nav-second collapse">
+                    <li><a role="button" id="link_limitorders">Show orders</a></li>
+                    <li><a role="button" id="link_order_repos">Order repositioning</a></li>
+                </ul>
+            </li>
+
+
+            <li class="nav-category">
+                Template
+            </li>
+
             <li>
                 <a href="#monitoring" data-toggle="collapse" aria-expanded="false">
                     Monitoring<span class="sub-nav-icon"> <i class="stroke-arrow"></i> </span>
@@ -20,9 +34,6 @@
                     <li><a role="button" id="link_usage"> Usage (template)</a></li>
                     <li><a role="button" id="link_activity"> Activity (template)</a></li>
                 </ul>
-            </li>
-            <li class="nav-category">
-                UI Elements
             </li>
             <li>
                 <a href="#uielements" data-toggle="collapse" aria-expanded="false">
@@ -47,7 +58,7 @@
                 </a>
                 <ul id="tables" class="nav nav-second collapse">
                     <li><a role="button" id="link_tablestyles">Table Styles (template)</a></li>
-                    <li><a role="button" id="link_datatables2">Data Tables (template)</a></li>
+                    <li><a role="button" id="link_datatables">Data tables (template)</a></li>
                 </ul>
             </li>
             <li>
@@ -114,5 +125,7 @@
                 </div>
             </li>
         </ul>
+
+
     </nav>
 </aside>

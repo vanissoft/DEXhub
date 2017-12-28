@@ -19,13 +19,42 @@
         <hr>
     </div>
 </div>
-<p>For the value in USD there is a query for each asset/BTS market.
-    The price of ticker BTS/USD is then multiplied for obtain the final value.</p>
-<p>This is made due to higher volume in BTS markets.</p>
 <div class="row m-t-lg">
-    <div class="col-lg-8">
-        <div id="table1" class="table-responsive">
-        </div>
+    <div class="col-lg-9">
+        <div class="tabs-container">
+            <div class="tabs-left">
+                <ul class="nav nav-tabs">
+                    <li class="active"><a data-toggle="tab" href="#tab-1">Table</a></li>
+                    <li class=""><a data-toggle="tab" href="#tab-2">Datatable</a></li>
+                </ul>
+                <div class="tab-content ">
+                    <div id="tab-1" class="tab-pane active">
+                        <div class="panel-body">
+                            <div class="pre-scrollable" style="max-height:500px;">
+                                <div id="table1" class="table-responsive">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-2" class="tab-pane">
+                        <div class="panel-body">
+                            <h4>Total <span id="lTotal">$</span></h4>
+                            <div class="table-responsive">
+                                <table id="table2" class="table">
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+    <div class="col-lg-3">
+        <p>For the value in USD there is a query for each asset/BTS market.
+            The price of ticker BTS/USD is then multiplied for obtain the final value.</p>
+        <p>This is made due to higher volume in BTS markets.</p>
     </div>
 </div>

@@ -20,9 +20,6 @@ import json
 import random
 
 from render import Render
-import mreq
-import bitshares_data
-import data_store
 
 Client_comm = None
 Active_modname = None
@@ -68,19 +65,6 @@ async def route1(req, tag):
 	return response_text(tag)
 
 
-@app.route('/get/<tag>', methods=['GET'])
-async def getinfo(req, tag):
-	rtn = mreq.getinfo(req.args, tag, req.path, req.query_string)
-	return response_json(rtn)
-
-
-@app.route('/post/<tag>', methods=['POST'])
-async def postinfo(req, tag):
-	rtn = mreq.postinfo(req.args, tag, req.path, req.query_string, req.json)
-	return response_text(rtn)
-
-
-
 @app.websocket('/comm')
 async def wscomms(request, ws):
 	global Client_comm, Active_modname
@@ -114,10 +98,6 @@ async def wscomms(request, ws):
 
 
 
-def dummy(param):
-	print(param)
-
-
 async def feeder():
 	global Active_modname
 	while True:
@@ -138,23 +118,6 @@ async def feeder():
 				print(err.__repr__())
 		await sleep(0.01)
 
-
-async def broker():
-	while True:
-		while True:
-			if Client_comm is not None:
-				print("sending")
-				await Client_comm.send("from the server")
-
-			rtn = Redisdb.lpop("operations")
-			if rtn is None:
-				break
-			op = pickle.loads(rtn)
-			if op['operation'] == 'launch_distribution':
-				distribution.enqueue(op, Q_bg)
-			elif op['operation'] == 'distribution_batch':
-				distribution.batch_enqueue(op, Q_bg)
-		await sleep(1)
 
 
 

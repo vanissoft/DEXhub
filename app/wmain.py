@@ -18,6 +18,7 @@ jq = window.jQuery
 
 Menu_binds = {
 	'link_limitorders': 'limit_orders.html',
+	'link_order_repos': 'order_repos.html',
 	'link_settings': 'settings.html',
 	'link_balances': 'balances.html',
 	'link_dashboard': 'dashboard.html', 'link_metrics': 'metrics.html', 'link_usage': 'usage.html',
@@ -82,6 +83,9 @@ def html_loaded(url, rtn):
 	elif 'balances' in url:
 		import wmodbalances
 		Active_module = wmodbalances
+	elif 'order_repos' in url:
+		import wmodorderrepos
+		Active_module = wmodorderrepos
 	else:
 		return False
 	if Active_module is not None:
