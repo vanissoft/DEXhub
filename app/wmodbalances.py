@@ -47,7 +47,10 @@ def incoming_data(data):
 			total_base += total
 		ord.sort(key=lambda x: x[1], reverse=True)
 
+		mlock = data['data']['margin_lock']
+		mlock_str = "{0:,.2f}".format(mlock)
 		total_str = "{0:,.2f}".format(total_base)
+		total2_str = "{0:,.2f}".format(total_base+mlock)
 		document['table1'].clear()
 		t1 = '<table class="table table-hover table-striped"><thead><tr>' + \
 			'<th>Asset</th><th>Total</th><th>Available</th><th>In Open Orders</th><th>Value in USD<br>'+total_str+'$</th>' + \
@@ -63,8 +66,12 @@ def incoming_data(data):
 			row += '<td>{0:,.5f}</td>'.format(bal[0] + bal[1])
 			row += '<td>{0:,.5f}</td>'.format(bal[0])
 			row += '<td>{0:,.5f}</td>'.format(bal[1])
+
 			value = (bal[0] + bal[1])*bal[2][0]
-			porc = value * 100 / total_base
+			if total_base == 0:
+				porc = 0
+			else:
+				porc = value * 100 / total_base
 			row += '<td>{0:,.2f}</td>'.format(value)
 			row += '<td>{0:,.0f}%</td>'.format(porc)
 			row += '<td>{0:,.2f}%</td>'.format(bal[2][2])
@@ -76,7 +83,7 @@ def incoming_data(data):
 			num += 1
 
 		document['table1'].innerHTML = t1+t2+"</tbody></table>"
-		document['lTotal'].innerHTML = total_str+"$"
+		document['lTotal'].innerHTML = total2_str+"$ ("+mlock_str+"$ locked as collateral)"
 
 		cols = ['Asset', 'Total', 'Available', 'In Open Orders', 'Value in USD', '% of portfolio', 'Var % Over BTS']
 

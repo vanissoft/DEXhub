@@ -233,6 +233,9 @@ def blockchain_listener():
 
 async def read_ticker(market):
 	# TODO: make lazy execution
+	rtn = Redisdb.get("ticket_"+market)
+	if rtn is not None:
+		return json.loads(rtn.decode('utf8'))
 	pair = market.split("/")
 	# BTS/USD get ticker of BTS with prices in USD
 	if pair[0] != pair[1]:
@@ -240,7 +243,9 @@ async def read_ticker(market):
 		mid_price = (float(rtn['lowest_ask']) + float(rtn['highest_bid']))/2
 		chg_24h = float(rtn['percent_change'])
 		volume = float(rtn['base_volume'])
-		return [mid_price, volume, chg_24h]
+		rtn = [mid_price, volume, chg_24h]
+		Redisdb.setex("ticket_"+market, 300, json.dumps(rtn))
+		return rtn
 	else:
 		return [1,0,0]
 
@@ -287,10 +292,26 @@ async def read_open_positions():
 			account_data = Bitshares.rpc.get_full_accounts([account[0]], False)[0][1]
 		except:
 			continue
+		# read call orders
+		if Redisdb.get("balances_callorders") is None:
+			call_orders = []
+			for co in account_data['call_orders']:
+				quote = co['call_price']['quote']['asset_id']
+				base = co['call_price']['base']['asset_id']
+				quote_asset = [Redisdb.hget("asset2:"+quote, 'symbol').decode('utf8'), int(Redisdb.hget("asset2:"+quote, 'precision'))]
+				base_asset =  [Redisdb.hget("asset2:"+base, 'symbol').decode('utf8'), int(Redisdb.hget("asset2:"+base, 'precision'))]
+				try:
+					amount_debt = round(int(co['debt']) / 10 ** quote_asset[1], quote_asset[1])
+					amount_collateral = round(int(co['collateral']) / 10 ** base_asset[1], base_asset[1])
+					call_orders.append([quote_asset[0], amount_debt, base_asset[0], amount_collateral])
+				except Exception as err:
+					print(err.__repr__())
+			if len(call_orders) > 0:
+				Redisdb.setex("balances_callorders", 300, json.dumps(call_orders))
+
 		# {'top_n_control_flags': 0, 'statistics': '2.6.203202', 'id': '1.2.203202', 'membership_expiration_date': '1969-12-31T23:59:59', 'lifetime_referrer': '1.2.203202', 'lifetime_referrer_fee_percentage': 8000, 'blacklisting_accounts': [], 'options': {'num_committee': 3, 'extensions': [], 'votes': ['0:91', '0:147', '0:173', '2:194', '2:224', '2:231', '2:233'], 'voting_account': '1.2.266887', 'memo_key': 'BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 'num_witness': 0}, 'referrer_rewards_percentage': 0, 'name': 'tximiss0', 'active': {'weight_threshold': 1, 'key_auths': [['BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 1]], 'address_auths': [], 'account_auths': [['1.2.446518', 1]]}, 'referrer': '1.2.203202', 'owner_special_authority': [0, {}], 'whitelisting_accounts': [], 'network_fee_percentage': 2000, 'registrar': '1.2.203202', 'active_special_authority': [0, {}], 'owner': {'weight_threshold': 1, 'key_auths': [['BTS7QyUi34KRVmRR4wqTevosoz4BrKGMfR5HFVSmAW17DfUXkTYEK', 1]], 'address_auths': [], 'account_auths': []}, 'cashback_vb': '1.13.2164', 'blacklisted_accounts': [], 'whitelisted_accounts': []}
-		limit_orders = account_data['limit_orders']
 		base_coins = 'BTS,USD,CNY,RUB,EUR'.split(",")
-		for lo in limit_orders:
+		for lo in account_data['limit_orders']:
 			quote =  lo['sell_price']['quote']['asset_id']
 			base = lo['sell_price']['base']['asset_id']
 			quote_asset = [Redisdb.hget("asset2:"+quote, 'symbol').decode('utf8'), int(Redisdb.hget("asset2:"+quote, 'precision'))]
@@ -332,7 +353,7 @@ async def read_open_positions():
 		if tot > 0:
 			opos2[asset] = tot
 		# store open pos balances with expiration
-		Redisdb.setex("balances_openpos", 3, json.dumps(opos2))
+		Redisdb.setex("balances_openpos", 15, json.dumps(opos2))
 	return ob
 
 
@@ -341,6 +362,8 @@ async def read_open_positions():
 def operations_listener():
 
 	async def get_balances():
+		# TODO cache balances data
+		# TODO: defer execution and send in another packet
 		"""
 		Return balance consolidated with "balances_openpos"
 		:return: {'asset': [balance, open orders], ...}
@@ -359,13 +382,28 @@ def operations_listener():
 				bal1[b] = [bal1[b][0], bal2[b]]
 			else:
 				bal1[b] = [0, bal2[b]]
-		# TODO: defer execution and send in another packet
 		base = await read_ticker("BTS/USD")
 		#return [mid_price, volume, chg_24h]
 		for b in bal1:
 			tick = await read_ticker(b+"/BTS")
+			for t in enumerate(tick):
+				if t[1] == float('Infinity'):
+					tick[t[0]] = 0
 			bal1[b].append([tick[0]*base[0], tick[1]*base[0], tick[2]])
-		Redisdb.rpush("datafeed", json.dumps({'balances': bal1}))
+
+		bal3 = Redisdb.get("balances_callorders")
+		if bal3 is not None:
+			bal3 = json.loads(bal3.decode('utf8'))
+			margin_lock = 0
+			for b in bal3:
+				tick = await read_ticker(b[0]+"/BTS")
+				for t in enumerate(tick):
+					if t[1] == float('Infinity'):
+						tick[t[0]] = 0
+				# assume that collateral is always BTS
+				margin_lock += (b[3] * base[0]) -  (b[1] * tick[0] * base[0])
+
+		Redisdb.rpush("datafeed", json.dumps({'balances': bal1, 'margin_lock': margin_lock}))
 
 
 	async def get_orderbook(mkt):
