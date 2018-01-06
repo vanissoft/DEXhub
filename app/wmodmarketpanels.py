@@ -7,10 +7,11 @@
 from browser import window, document
 import datetime
 import w_mod_graphs
+import json
 
 jq = window.jQuery
 
-Module_name = "draggable"
+Module_name = "marketpanels"
 Comm = None
 
 Panels = {}
@@ -18,17 +19,24 @@ Panel_count = 0
 
 
 def save_layout():
-	global Panels
-	Ws_comm.send({'operation': 'enqueue', 'module': "main", 'what': 'open_positions'})
+	global Comm, Panels
+	spanels = [[Panels[p][k] for k in ['market', 'column']] for p in Panels]
+	Comm.send({'operation': 'enqueue', 'module': "marketpanels", 'what': 'marketpanels_savelayout', 'data': json.dumps(spanels)})
 
 
 def drag_receive(ev, ui):
+	global Panels
 	column = int(ev.target.id.split("_")[1])
-	panel = ui.item.attr("id")
+	panel = ui.item.attr("id").split("_")[1]
+	print(panel, panel in Panels)
 	if panel in Panels:
 		Panels[panel]['column'] = column
+		print(Panels[panel]['column'], column)
 		if Panels[panel]['echart_obj'] is not None:
 			Panels[panel]['echart_obj'].resize()
+	print("destino:", column)
+	print("panels:", Panels)
+	save_layout()
 
 def query_market(mkt):
 	global Comm
@@ -44,12 +52,12 @@ def new_panel(market, column):
 	global Panel_count, Panels, Comm
 	column = str(column)
 	Panel_count += 1
-	p1 = panel(Panel_count, market)
+	p1 = panel(Panel_count, market, column)
 	Panels[str(Panel_count)] = {}
 	Panels[str(Panel_count)]['market'] = market
 	Panels[str(Panel_count)]['column'] = column
 	Panels[str(Panel_count)]['echart_obj'] = None
-	document['newpanel'].outerHTML = p1
+	document['newpanel_'+column].outerHTML = p1
 	jq("#form" + str(Panel_count)).hide()
 	document["bChangeMarket1_" + str(Panel_count)].bind("click", click_change_market1)
 	document["bChangeMarket2_" + str(Panel_count)].bind("click", click_change_market2)
@@ -59,7 +67,8 @@ def new_panel(market, column):
 
 def populate_panels():
 	# TODO: recover from database
-	new_panel("OPEN.ETH/BTS", 1)
+	Comm.send({'operation': 'enqueue', 'module': "marketpanels", 'what': 'marketpanels_loadlayout'})
+	#new_panel("OPEN.ETH/BTS", 1)
 
 
 def click_show(ev):
@@ -103,10 +112,10 @@ def init(comm):
 		"tolerance": 'pointer', "forcePlaceholderSize": True, "opacity": 0.8}).disableSelection()
 
 
-def panel(id, mkt):
-	html = """<div id="newpanel"></div>
+def panel(id, mkt, column):
+	html = """<div id="newpanel_{2}"></div>
 			<p></p>
-	       <div class="panel panel-filled" id="panel{0}">
+	       <div class="panel panel-filled" id="panel_{0}">
 	       <div class="panel-heading">
                 <div class="panel-tools">
                     <a role="button" id="bFilter_{0}" class="fa fa-filter"></a>
@@ -124,7 +133,7 @@ def panel(id, mkt):
                 <div id="echart_{0}" style="width:100%; height:250px; display: none;"></div>
             </div>
         </div>"""
-	return html.format(str(id), mkt)
+	return html.format(str(id), mkt, column)
 
 
 def onResize():
@@ -132,6 +141,7 @@ def onResize():
 
 def incoming_data(data):
 	global Panels
+	print("incoming", data['data'])
 	if 'market_trades' in data['data']:
 		market = data['data']['market_trades']['market']
 		for p in Panels:
@@ -144,3 +154,8 @@ def incoming_data(data):
 				og.load_data(data['data']['market_trades']['data'])
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
+	elif 'marketpanels_layout' in data['data']:
+		print(data['data']['marketpanels_layout'])
+		for panel in data['data']['marketpanels_layout']:
+			print(panel)
+			new_panel(panel[0], panel[1])

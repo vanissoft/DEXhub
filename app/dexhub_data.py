@@ -357,6 +357,14 @@ async def read_open_positions():
 	return ob
 
 
+def clear_cache():
+	"""
+	Clear cached data depending on accounts
+	:return:
+	"""
+	Redisdb.delete("balances_openpos")
+	Redisdb.delete("balances_callorders")
+
 
 
 def operations_listener():
@@ -389,12 +397,12 @@ def operations_listener():
 			for t in enumerate(tick):
 				if t[1] == float('Infinity'):
 					tick[t[0]] = 0
-			bal1[b].append([tick[0]*base[0], tick[1]*base[0], tick[2]])
+			bal1[b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Redisdb.hget("asset1:" + b, 'precision'))])
 
+		margin_lock = 0
 		bal3 = Redisdb.get("balances_callorders")
 		if bal3 is not None:
 			bal3 = json.loads(bal3.decode('utf8'))
-			margin_lock = 0
 			for b in bal3:
 				tick = await read_ticker(b[0]+"/BTS")
 				for t in enumerate(tick):
@@ -549,6 +557,7 @@ def operations_listener():
 		account_id = Bitshares.rpc.get_account(dat[0])['id']
 		dat.append(account_id)
 		accounts.append(dat)
+		clear_cache()
 		Redisdb.set("settings_accounts", json.dumps(accounts))
 		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
 		Redisdb.rpush("datafeed", json.dumps({'message': "Account created<br><strong>"+dat[0]+"</strong>"}))
@@ -561,6 +570,7 @@ def operations_listener():
 			accounts = json.loads(rtn.decode('utf8'))
 			accounts.pop(id)
 			Redisdb.set("settings_accounts", json.dumps(accounts))
+		clear_cache()
 		Redisdb.rpush("datafeed", json.dumps({'settings_account_list': accounts}))
 		Redisdb.rpush("datafeed", json.dumps({'message': "Account deleted"}))
 
@@ -596,6 +606,19 @@ def operations_listener():
 			Redisdb.rpush("datafeed", json.dumps({'master_unlock': {'message': "password does not match", 'error': True}}))
 			Redisdb.rpush("datafeed", json.dumps({'message': "Password does not match", 'error': True}))
 
+	async def marketpanels_savelayout(dat):
+		Redisdb.set("MarketPanels_layout", dat['data'])
+
+	async def marketpanels_loadlayout(dat):
+		default = [["OPEN.ETH/BTS", 1]]
+		rtn = Redisdb.get("MarketPanels_layout")
+		if rtn is None:
+			layout = default
+		else:
+			layout = json.loads(rtn.decode('utf8'))
+			if len(layout) == 0:
+				layout = default
+		Redisdb.rpush("datafeed", json.dumps({'marketpanels_layout': layout}))
 
 	async def do_ops(op):
 		"""
@@ -628,6 +651,10 @@ def operations_listener():
 			await get_settings_misc()
 		elif dat['what'] == 'master_unlock':
 			await master_unlock(dat)
+		elif dat['what'] == 'marketpanels_savelayout':
+			await marketpanels_savelayout(dat)
+		elif dat['what'] == 'marketpanels_loadlayout':
+			await marketpanels_loadlayout(dat)
 
 
 	async def do_operations():

@@ -1315,6 +1315,9 @@ img.image-xl {
 .view-header .header-title {
   margin-left: 68px;
 }
+.view-header .header-center {
+  float: center;
+}
 .view-header .header-title h3 {
   margin-bottom: 2px;
 }

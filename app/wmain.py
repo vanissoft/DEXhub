@@ -21,11 +21,11 @@ Menu_binds = {
 	'link_order_repos': 'order_repos.html',
 	'link_settings': 'settings.html',
 	'link_balances': 'balances.html',
+	'link_marketpanels': 'marketpanels.html',
 	'link_dashboard': 'dashboard.html', 'link_metrics': 'metrics.html', 'link_usage': 'usage.html',
 	'link_activity': 'activity.html', 'link_panels': 'panels.html', 'link_typography': 'typography.html',
 	'link_icons': 'icons.html', 'link_buttons': 'buttons.html', 'link_tabs': 'tabs.html', 'link_modals': 'modals.html',
 	'link_alerts': 'alerts.html', 'link_loaders': 'loaders.html', 'link_gridsystem': 'gridSystem.html',
-	'link_draggable': 'draggable.html',
 	'link_tablestyles': 'tableStyles.html', 'link_datatables': 'dataTables.html',
 	'link_basicelements': 'formElements.html', 'link_autocomplete': 'autocomplete.html',
 	'link_selectioncontrols': 'controls.html', 'link_texteditor': 'textEditor.html', 'link_flotcharts': 'flotCharts.html',
@@ -68,9 +68,9 @@ def html_loaded(url, rtn):
 	elif 'alerts' in url:
 		import wmodalerts
 		Active_module = wmodalerts
-	elif 'draggable' in url:
-		import wmoddraggable
-		Active_module = wmoddraggable
+	elif 'marketpanels' in url:
+		import wmodmarketpanels
+		Active_module = wmodmarketpanels
 	elif 'dataTables' in url:
 		import wmoddatatables
 		Active_module = wmoddatatables
@@ -96,6 +96,8 @@ def html_loaded(url, rtn):
 
 def menu_click(ev):
 	global Menu_binds, ws_comm
+	jq("ul > li").removeClass('active')
+	jq(ev.target.parent).addClass('active')
 	query(Menu_binds[ev.target.id], html_loaded)
 
 
