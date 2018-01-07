@@ -16,7 +16,7 @@ Comm = None
 
 Panels = {}
 Panel_count = 0
-
+Order_pos = {}
 
 def save_layout():
 	global Comm, Panels
@@ -62,6 +62,7 @@ def new_panel(market, column, chart_type):
 	Panels[str(Panel_count)]['column'] = column
 	Panels[str(Panel_count)]['echart_obj'] = None
 	Panels[str(Panel_count)]['chart_type'] = chart_type
+	Panels[str(Panel_count)]['data'] = None
 	document['newpanel_'+column].outerHTML = p1
 	jq("#form" + str(Panel_count)).hide()
 	document["bChangeMarket1_" + str(Panel_count)].bind("click", click_new_trades)
@@ -74,9 +75,8 @@ def new_panel(market, column, chart_type):
 
 def click_close(ev):
 	id = str(ev.target.id.split("_")[1])
-	print("close", ev.target.id)
-	print("close", id)
-	#jq("#form"+id).toggle("fast")
+	document['panel_'+id].outerHTML = ''
+
 
 def click_show(ev):
 	id = str(ev.target.id.split("_")[1])
@@ -109,6 +109,7 @@ def init(comm):
 	Panels = {}
 	Panel_count = 0
 	Comm = comm
+	Comm.send({'operation': 'enqueue', 'module': "main", 'what': 'open_positions'})
 	Comm.send({'operation': 'enqueue', 'module': "marketpanels", 'what': 'marketpanels_loadlayout'})
 	jq('.draggable-container [class*=col]').sortable({"handle": ".panel-body", "connectWith": "[class*=col]",
 		"receive": drag_receive,
@@ -145,7 +146,7 @@ def panel(id, mkt, column):
 
 
 def incoming_data(data):
-	global Panels
+	global Panels, Order_pos
 	if 'market_trades' in data['data']:
 		market = data['data']['market_trades']['market']
 		for p in Panels:
@@ -155,9 +156,10 @@ def incoming_data(data):
 				og = w_mod_graphs.MarketTrades1(obj)
 				og.title = market + " trades"
 				og.market = market
-				og.load_data(data['data']['market_trades']['data'])
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
+				Panels[p]['data'] = data['data']['market_trades']['data']
+				og.load_data(Panels[p]['data'])
 
 	elif 'orderbook' in data['data']:
 		market = data['data']['orderbook']['market']
@@ -170,11 +172,12 @@ def incoming_data(data):
 				og = w_mod_graphs.OrderBook1(obj)
 				og.title = market + " orderbook"
 				og.market = market
-				#og.orders = Order_pos[market]
-				og.load_data(data['data']['orderbook']['data'])
+				if market in Order_pos:
+					og.orders = Order_pos[market]
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
-
+				Panels[p]['data'] = data['data']['orderbook']['data']
+				og.load_data(Panels[p]['data'])
 
 	elif 'marketpanels_layout' in data['data']:
 		print(data['data']['marketpanels_layout'])
@@ -184,3 +187,22 @@ def incoming_data(data):
 				new_panel(panel[0], panel[1], "depth")
 			else:
 				new_panel(panel[0], panel[1], panel[2])
+
+	elif 'open_positions' in data['data']:
+		if data['data']['open_positions'] is None:
+			return
+		dat1 = data['data']['open_positions']
+		dat1.sort(key=lambda x: x[0]+x[3]+x[1])
+		markets = dict()
+		dat = []
+		Order_pos = {}
+		for d in dat1:
+			tmpl1 = "{:,."+str(d[8])+"f}"
+			tmpl2 = "{:,."+str(d[9])+"f}"
+			market = d[1]+"/"+d[3]
+			dat.append([market, d[0], tmpl1.format(d[2]), tmpl2.format(d[5]), tmpl2.format(d[6]), d[7]])
+			if market in markets:
+				Order_pos[market].append([d[0], d[5]])
+			else:
+				Order_pos[market] = [[d[0], d[5]]]
+
