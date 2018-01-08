@@ -655,7 +655,8 @@ def operations_listener():
 			await marketpanels_savelayout(dat)
 		elif dat['what'] == 'marketpanels_loadlayout':
 			await marketpanels_loadlayout(dat)
-
+		elif dat['what'] == 'ping':
+			Redisdb.rpush("datafeed", json.dumps('pong'))
 
 	async def do_operations():
 		while True:

@@ -2831,8 +2831,8 @@ fieldset[disabled] .form-control {
   }
 }
 .loader-example {
-  padding: 40px 0;
-  height: 120px;
+  padding: 0px 0;
+  height: 0px;
 }
 .jqstooltip {
   padding: 5px !important;

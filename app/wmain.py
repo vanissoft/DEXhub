@@ -96,6 +96,7 @@ def html_loaded(url, rtn):
 
 def menu_click(ev):
 	global Menu_binds, ws_comm
+	wglobals.clear_timer(0)
 	jq("ul > li").removeClass('active')
 	jq(ev.target.parent).addClass('active')
 	query(Menu_binds[ev.target.id], html_loaded)

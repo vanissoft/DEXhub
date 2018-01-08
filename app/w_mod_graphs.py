@@ -80,9 +80,13 @@ class graph_orderbook:
 		self.limits_y = [0, max(self.data[0][3], self.data[-1][3])]
 		print("limits_y", self.limits_y)
 
+		if self.title != "":
+			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
+									"grid": {"show": False, 'borderColor': '#f00', "top": "30", "bottom": "20", "left": "10", "right": "15"}})
+		else:
+			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "bottom": "20", "left": "10", "right": "15"}})
+
 		self.chart1.setOption({"tooltip": {},
-			"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
-			"grid": {"show": False, 'borderColor': '#f00', "top": "30", "bottom": "20", "left": "20", "right": "20"},
 			"xAxis": {"min": None, "max": None, "type": 'value',
 					"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
@@ -150,10 +154,6 @@ class MarketTrades1(graph_orderbook):
 		print("lenght", len(self.data['data']))
 
 		gdata = {"tooltip": {},
-			"title": {"text": self.title, 'left': '0%', 'textStyle': {'color': '#aaa'}},
-			"grid": [{'left': '10%', 'right': '5%', 'height': '60%'},
-					{'left': '10%', 'right': '5%', 'top': '80%', 'height': '16%'}],
-			"brush": {"xAxisIndex": 'all', "brushLink": 'all', "outOfBrush": {"colorAlpha": 0.6}},
 			"axisPointer": {'link': {'xAxisIndex': 'all'}, 'label': {'backgroundColor': '#ca5'}},
 			"yAxis": [{"scale": True, "splitArea": {"show": False}, "axisLabel": {'show': True, 'color': "#ececec"},
 				"splitLine": {"show": True, "lineStyle": {"color": "#555"}}},
@@ -174,6 +174,13 @@ class MarketTrades1(graph_orderbook):
 						{"name": "Volume", "type": "bar", "xAxisIndex": 1, "yAxisIndex": 1, "data": self.data['volume_data']}]
 			}
 
+		if self.title == '':
+			gdata['grid'] = [{'left': '10%', 'right': '5%', 'height': '65%', 'top': "10"},
+										{'left': '10%', 'right': '5%', 'top': '80%', 'height': '16%'}]
+		else:
+			gdata['title'] = {"text": self.title, 'left': '0%', 'textStyle': {'color': '#aaa'}}
+			gdata['grid'] = [{'left': '10%', 'right': '5%', 'height': '65%', 'top': "15"},
+										{'left': '10%', 'right': '5%', 'top': '80%', 'height': '16%'}]
 
 		if len(self.orders) > 0:
 			print("w_mod_graph orders 2", self.orders)

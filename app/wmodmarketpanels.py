@@ -7,7 +7,9 @@
 from browser import window, document
 import datetime
 import w_mod_graphs
+import wglobals
 import json
+import random
 
 jq = window.jQuery
 
@@ -49,33 +51,45 @@ def query_make(mkt, chart_type):
 		Comm.send({'operation': 'enqueue_bg', 'module': Module_name, 'what': 'orderbook', 'market': mkt})
 
 
-def new_panel(market, column, chart_type):
+def new_panel(market, column, chart_type, data=None):
 	"""
 	Create a new panel in column 0
 	"""
 	global Panel_count, Panels, Comm
 	column = str(column)
 	Panel_count += 1
-	p1 = panel(Panel_count, market, column)
-	Panels[str(Panel_count)] = {}
-	Panels[str(Panel_count)]['market'] = market
-	Panels[str(Panel_count)]['column'] = column
-	Panels[str(Panel_count)]['echart_obj'] = None
-	Panels[str(Panel_count)]['chart_type'] = chart_type
-	Panels[str(Panel_count)]['data'] = None
+	id = str(Panel_count)
+	if chart_type == "trades":
+		title = market + " trades"
+	elif chart_type == "depth":
+		title = market + " depth"
+	p1 = panel(Panel_count, market, column, title)
+	Panels[id] = {}
+	Panels[id]['id'] = id
+	Panels[id]['market'] = market
+	Panels[id]['column'] = column
+	Panels[id]['echart_obj'] = None
+	Panels[id]['chart_type'] = chart_type
+	Panels[id]['data'] = data
+	Panels[id]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(hours=12)
 	document['newpanel_'+column].outerHTML = p1
 	jq("#form" + str(Panel_count)).hide()
-	document["bChangeMarket1_" + str(Panel_count)].bind("click", click_new_trades)
-	document["bChangeMarket2_" + str(Panel_count)].bind("click", click_new_depth)
-	document["bFilter_" + str(Panel_count)].bind("click", click_show)
-	document["bClose_" + str(Panel_count)].bind("click", click_close)
-	query_make(market, chart_type)
+	document["bChangeMarket1_" + id].bind("click", click_new_trades)
+	document["bChangeMarket2_" + id].bind("click", click_new_depth)
+	document["bFilter_" + id].bind("click", click_show)
+	document["bClose_" + id].bind("click", click_close)
+	if data == None:
+		query_make(market, chart_type)
+
 
 
 
 def click_close(ev):
+	global Panels
 	id = str(ev.target.id.split("_")[1])
 	document['panel_'+id].outerHTML = ''
+	del Panels[id]
+	save_layout()
 
 
 def click_show(ev):
@@ -91,6 +105,7 @@ def click_new_trades(ev):
 	id = str(ev.target.id.split("_")[1])
 	jq("#form"+id).hide()
 	new_panel(document['iMarket_'+id].value, Panels[id]['column'], "trades")
+	save_layout()
 
 
 def click_new_depth(ev):
@@ -101,65 +116,100 @@ def click_new_depth(ev):
 	id = str(ev.target.id.split("_")[1])
 	jq("#form"+id).hide()
 	new_panel(document['iMarket_'+id].value, Panels[id]['column'], "depth")
+	save_layout()
+
+
+def refresh_data():
+	global Panels
+	now = datetime.datetime.now()
+	for p in Panels:
+		if now > Panels[p]['next_refresh']:
+			jq("#loading_" + p).show()
+			query_make(Panels[p]['market'], Panels[p]['chart_type'])
+			Panels[p]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(seconds=random.randint(60, 600))
 
 
 def init(comm):
 	global Comm, Panels, Panel_count
 	# globals survive between module calls, clean
-	Panels = {}
-	Panel_count = 0
 	Comm = comm
 	Comm.send({'operation': 'enqueue', 'module': "main", 'what': 'open_positions'})
-	Comm.send({'operation': 'enqueue', 'module': "marketpanels", 'what': 'marketpanels_loadlayout'})
+	print("init---------")
+	print(Panel_count)
+	if Panel_count == 0:
+		Panels = {}
+		Comm.send({'operation': 'enqueue', 'module': "marketpanels", 'what': 'marketpanels_loadlayout'})
+	else:
+		Panel_count = 0
+		reload_panels()
+
 	jq('.draggable-container [class*=col]').sortable({"handle": ".panel-body", "connectWith": "[class*=col]",
 		"receive": drag_receive,
 		"tolerance": 'pointer', "forcePlaceholderSize": True, "opacity": 0.8}).disableSelection()
+	wglobals.set_timer(0, refresh_data, 5)
 
 
-def panel(id, mkt, column):
+def reload_panels():
+	global Panels
+	for p in [k for k in Panels]:
+		if Panels[p]['data'] is None:
+			continue
+		new_panel(Panels[p]['market'], Panels[p]['column'], Panels[p]['chart_type'], Panels[p]['data'])
+	for p in Panels:
+		incoming_data({'data': Panels[p]['data']})
+
+
+def panel(id, mkt, column, title):
 	html = """<div id="newpanel_{2}"></div>
 			<p></p>
 	       <div class="panel panel-filled" id="panel_{0}">
-	       <div class="panel-heading">
-                <div class="panel-tools">
-                    <a role="button" id="bFilter_{0}" class="fa fa-filter"></a>
-                    <a role="button" id="bClose_{0}" class="fa fa-times"></a>
-                </div>
-                {1}
-            </div>
-            <div class="panel-body">
-                <div id="form{0}" class="input-group">
-	                <div class="input-group">
-	                    <input type="text" class="form-control width100" id="iMarket_{0}" placeholder="xxx/xxx">
-	                    <span class="input-group-btn">
-	                        <button id="bChangeMarket1_{0}" class="btn btn-accent">Trades</button>
-	                        <button id="bChangeMarket2_{0}" class="btn btn-accent">Depth</button>
-	                    </span>
+		       <div class="panel-heading" id="panelheading_{0}">
+	                <div class="panel-tools">
+	                    <a role="button" id="bFilter_{0}" class="fa fa-filter"></a>
+	                    <a role="button" id="bClose_{0}" class="fa fa-times"></a>
 	                </div>
-	            <hr>
+	                {3}
+	                <div id="loading_{0}" class="loader_example">
+	                    <div class="loader-dots"></div>
+	                </div>
 	            </div>
-                <div id="echart_{0}" style="width:100%; height:250px; display: none;"></div>
-            </div>
-        </div>"""
-	return html.format(str(id), mkt, column)
+	            <div class="panel-body" id="panelbody_{0}">
+	                <div id="form{0}" class="input-group">
+		                <div class="input-group">
+		                    <input type="text" class="form-control width100" id="iMarket_{0}" placeholder="xxx/xxx">
+		                    <span class="input-group-btn">
+		                        <button id="bChangeMarket1_{0}" class="btn btn-accent">Trades</button>
+		                        <button id="bChangeMarket2_{0}" class="btn btn-accent">Depth</button>
+		                    </span>
+		                </div>
+		                <hr>
+		            </div>
+	                <div id="echart_{0}" style="width:100%; height:150px; display: none;"></div>
+	            </div>
+            </div>"""
+	return html.format(str(id), mkt, column, title)
 
 
 
 def incoming_data(data):
 	global Panels, Order_pos
-	if 'market_trades' in data['data']:
+	if 'pong' in data['data']:
+		print("pong!------")
+
+	elif 'market_trades' in data['data']:
 		market = data['data']['market_trades']['market']
 		for p in Panels:
 			if Panels[p]['market'] == market and Panels[p]['chart_type'] == "trades":
-				jq("#echart_"+p).show()
+				jq("#loading_" + p).hide()
+				jq("#echart_" + p).show()
 				obj = window.echarts.init(document.getElementById("echart_"+p))
 				og = w_mod_graphs.MarketTrades1(obj)
-				og.title = market + " trades"
 				og.market = market
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
-				Panels[p]['data'] = data['data']['market_trades']['data']
-				og.load_data(Panels[p]['data'])
+				Panels[p]['data'] = data['data']
+				Panels[p]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(seconds=random.randint(60,600))
+				og.load_data(Panels[p]['data']['market_trades']['data'])
 
 	elif 'orderbook' in data['data']:
 		market = data['data']['orderbook']['market']
@@ -167,23 +217,24 @@ def incoming_data(data):
 		data['data']['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
 		for p in Panels:
 			if Panels[p]['market'] == market and Panels[p]['chart_type'] == "depth":
-				jq("#echart_"+p).show()
+				jq("#loading_" + p).hide()
+				jq("#echart_" + p).show()
 				obj = window.echarts.init(document.getElementById("echart_"+p))
 				og = w_mod_graphs.OrderBook1(obj)
-				og.title = market + " orderbook"
 				og.market = market
 				if market in Order_pos:
 					og.orders = Order_pos[market]
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
-				Panels[p]['data'] = data['data']['orderbook']['data']
-				og.load_data(Panels[p]['data'])
+				Panels[p]['data'] = data['data']
+				Panels[p]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(seconds=random.randint(60,600))
+				og.load_data(Panels[p]['data']['orderbook']['data'])
 
 	elif 'marketpanels_layout' in data['data']:
 		print(data['data']['marketpanels_layout'])
 		for panel in data['data']['marketpanels_layout']:
 			print(panel)
-			if len(panel) < 3:
+			if len(panel) < 3:  # compatibility
 				new_panel(panel[0], panel[1], "depth")
 			else:
 				new_panel(panel[0], panel[1], panel[2])
