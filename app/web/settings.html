@@ -1,0 +1,77 @@
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="view-header">
+            <div class="pull-right text-right" style="line-height: 14px">
+                <small>Main<br>General<br> <span class="c-white">Settings</span></small>
+            </div>
+            <div class="header-icon">
+                <i class="pe page-header-icon pe-7s-settings"></i>
+            </div>
+            <div class="header-title">
+                <h3>Settings</h3>
+                <small>
+                    Configuration
+                </small>
+            </div>
+        </div>
+        <hr>
+    </div>
+</div>
+<div class="row m-t-lg">
+    <div class="col-lg-8">
+        <div class="tabs-container">
+
+            <div class="tabs-left">
+                <ul class="nav nav-tabs">
+                    <li class="active"><a data-toggle="tab" href="#tab-1">Account settings</a></li>
+                    <li class=""><a data-toggle="tab" href="#tab-2">Misc settings</a></li>
+                </ul>
+                <div class="tab-content ">
+                    <div id="tab-1" class="tab-pane active">
+                        <div class="panel-body">
+                            <strong class="c-white">Account related settings</strong>
+                            <p>Multiple accounts can be entered for a consolidation of the balances1.</p>
+                            <br>
+                            <div id="table1" class="table-responsive">
+                            </div>
+                            <br>
+                            <button id="bNewAccount" class="btn btn-accent btn-sm">New Account</button>
+                            <br><br>
+                            <div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
+                                <div class="form-group"><label for="iName">Bitshares account name</label> <input type="text" class="form-control" id="iName" placeholder="Name">
+                                    <p class="help-block">Must be a real account in Bitshares</p></div>
+                                <div class="form-group"><label for="iFamiliar">Familiar name</label> <input type="email" class="form-control" id="iFamiliar" placeholder="Name">
+                                    <p class="help-block">Used for display</p></div>
+                                <div class="form-group"><label for="iWifkey">Wif key</label> <input type="password" class="form-control disabled" id="iWifkey" placeholder="wif format">
+                                    <p class="help-block">Key will be stored in UNencrypted form</p></div>
+                                <button id="bSave" class="btn btn-accent">Save</button>
+                                <button id="bCancel" class="btn btn-default">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-2" class="tab-pane">
+                        <div class="panel-body">
+                            <strong class="c-white">Connection settings</strong>
+                            <p>wss://bitshares.openledger.info/ws</p>
+                            <p>Node preferences</p>
+                            <br>
+                            <div class="form-group"><label for="iMPpassphraseSet">Master password</label>
+                                <div class="form-inline"> <input type="text" class="form-control" id="iMPpassphraseSet" placeholder="passphrase">
+                                    <span> - Hash: </span><label id="lMPHash">password hash</label>
+                                </div>
+                                <p class="help-block">Password for unlock and encrypt Wif keys</p></div>
+                            <br>
+                            <strong class="c-white">Misc settings</strong>
+                            <p>Another settings</p>
+                            <br>
+                            <button id="bSaveMisc" class="btn btn-accent">Save</button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
