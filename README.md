@@ -14,7 +14,7 @@ The progress is tracked in Kanban style notes:
 
 ## Instalation
 Development OS is GNU/Linux so other OS would don't work.
-Clone the repo and launch main.py and then dexhub_data.py. It is in debugging/developing mode thus the manual launch of dexhub_data.py.
+Clone the repo and launch main.py and then dexhub_worker.py. It is in debugging/developing mode thus the manual launch of dexhub_worker.py.
 Python will inform of the depencies like Sanic, Redis, and so on.
 Once launched browse to http://127.0.0.1:8808/main.html
 
