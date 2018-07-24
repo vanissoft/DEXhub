@@ -13,6 +13,8 @@ jq = window.jQuery
 
 Module_name = "balances"
 Accounts = []
+Account_active = 'All'
+Datatable_created = False
 
 Last = None
 
@@ -22,6 +24,8 @@ def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
+	Ws_comm.send({'call': 'account_list', 'module': Module_name, 'operation': 'enqueue'})
+
 	if Last is None:
 		Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
 	else:
@@ -56,11 +60,16 @@ def on_tabshown(ev):
 
 
 def datatable_create(dt_rows, precision):
+	global Datatable_created
 	cols = ['Asset', 'Total', 'Available', 'In Open Orders', 'Value in USD', '% of portfolio', 'Var % Over BTS']
 
 	def dt_format(data, type, row, meta):
 		tmpl = '{0:,.' + str(precision[row[0]]) + 'f}'
 		return tmpl.format(data)
+
+	if Datatable_created:
+		jq('#table2').DataTable().clear()
+		jq('#table2').DataTable().destroy()
 
 	# TODO: numeric alignment to the right doesn't work?
 	jq('#table2').DataTable({"data": dt_rows, "columns": [{'title': v} for v in cols],
@@ -73,21 +82,75 @@ def datatable_create(dt_rows, precision):
 										 {"extend": 'csv', "title": 'Balances', "className": 'btn-sm'},
 										 {"extend": 'pdf', "title": 'Balances', "className": 'btn-sm'},
 										 {"extend": 'print', "className": 'btn-sm'}]})
+	Datatable_created = True
+
+def click_change_account(ev):
+	global Account_active
+	for acc in Accounts:
+		jq("#bAccount_" + acc).removeClass('btn-accent')
+		jq("#bAccount_" + acc).addClass('btn-default')
+	jq('#' + ev.target.id).removeClass('btn-default')
+	jq('#' + ev.target.id).addClass('btn-accent')
+	Account_active = ev.target.id[len('bAccount_'):]
+	print("query for", ev.target.id, '#'+ev.target.id, Account_active)
+	incoming_data(Last)
+
+
+def create_account_selector(accs):
+	if len(accs) == 0:
+		return False
+	btns = ""
+	btns += '<button id="bAccount_{0}" class="btn btn-accent btn-sm">{0}</button>'.format(accs[0])
+	for n in range(1, len(accs)):
+		btns += '<button id="bAccount_{0}" class="btn btn-default btn-sm">{0}</button>'.format(accs[n])
+
+	buttons = """<div class="buttons-margin">
+					<p>Account selector.</p>
+					<div>{}</div>
+				</div>""".format(btns)
+	document['account_selector'].innerHTML = buttons
+	for acc in accs:
+		document["bAccount_"+acc].bind('click', click_change_account)
+
+
+def account_balances(data):
+	bal0 = data['balances']
+	print("account_balances", Account_active)
+	if Account_active == "All":
+		bal = {}
+		for acc in bal0:
+			for asset in bal0[acc]:
+				print(acc,asset,bal0[acc][asset])
+				if asset in bal:
+					bal[asset][0] += bal0[acc][asset][0]
+					bal[asset][1] += bal0[acc][asset][1]
+				else:
+					bal[asset] = bal0[acc][asset]
+		return bal
+	else:
+		return bal0[Account_active]
 
 
 def incoming_data(data):
-	global Last
+	global Last, Accounts
 	if 'uselocalcache' in data:
 		data = Last
+	if 'settings_account_list' in data:
+		Accounts = [x[0] for x in data['settings_account_list']]
+		Accounts.insert(0, "All")
+		print("account list", Accounts)
+		create_account_selector(Accounts)
+
 	if 'balances' in data:
+		balance = account_balances(data)
 		Last = data
-		init_echart(Last['balances'])
+		init_echart(balance)
 		total_base = 0
 		# order by value in USD
 		ord = []
 		precision = {}
-		for asset in data['balances']:
-			bal = data['balances'][asset]
+		for asset in balance:
+			bal = balance[asset]
 			total = (bal[0] + bal[1]) * bal[2][0]
 			precision[asset] = bal[2][3]
 			ord.append([asset, total])
@@ -107,7 +170,7 @@ def incoming_data(data):
 		num = 0
 		dt_rows = []
 		for asset in [x[0] for x in ord]:
-			bal = data['balances'][asset]
+			bal = balance[asset]
 			row = ''
 			row += '<td>{}</td>'.format(asset)
 			row += '<td>{0:,.5f}</td>'.format(bal[0] + bal[1])

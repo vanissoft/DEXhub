@@ -110,6 +110,8 @@ import base64
 from bitshares import BitShares
 import blockchain
 
+WBTS = None
+
 def load_assets():
 	"""
 	Load all the Bitshares assets.
@@ -234,6 +236,7 @@ async def read_balances():
 	while True:  # enable reenter due new assets
 		bal = {}
 		for account in alist:
+			bal[account[0]] = {}
 			try:
 				rtn = Bitshares.rpc.get_account_balances(account[3], [])
 			except Exception as err:
@@ -249,10 +252,7 @@ async def read_balances():
 				symbol = Redisdb.hget("asset2:" + r['asset_id'], 'symbol').decode('utf8')
 				amount = round(int(r['amount']) / 10 ** prec, prec)
 				if amount > 0:
-					if symbol in bal:
-						bal[symbol] = [bal[symbol][0] + amount, 0]
-					else:
-						bal[symbol] = [amount, 0]
+					bal[account[0]][symbol] = [amount, 0]
 		break
 	Redisdb.setex("cache_balances", random.randint(200, 3000), json.dumps(bal))
 	return bal
@@ -266,6 +266,7 @@ async def get_balances():
 	Return balance consolidated with "balances_openpos"
 	:return: {'asset': [balance, open orders], ...}
 	"""
+	accounts = await account_list()
 	bal1 = await read_balances()
 	if bal1 is None:
 		return None, None, None
@@ -274,19 +275,21 @@ async def get_balances():
 		rtn = await open_positions()
 		bal2 = Redisdb.get("balances_openpos")
 	bal2 = json.loads(bal2.decode('utf8'))
-	for b in bal2:
-		if b in bal1:
-			bal1[b] = [bal1[b][0], bal2[b]]
-		else:
-			bal1[b] = [0, bal2[b]]
+	for acc in accounts:
+		for b in bal2[acc[0]]:
+			if b in bal1[acc[0]]:
+				bal1[acc[0]][b] = [bal1[acc[0]][b][0], bal2[acc[0]][b]]
+			else:
+				bal1[acc[0]][b] = [0, bal2[acc[0]][b]]
 	base = await read_ticker("BTS/USD")
 	#return [mid_price, volume, chg_24h]
-	for b in bal1:
-		tick = await read_ticker(b+"/BTS")
-		for t in enumerate(tick):
-			if t[1] == float('Infinity'):
-				tick[t[0]] = 0
-		bal1[b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Redisdb.hget("asset1:" + b, 'precision'))])
+	for ac in bal1:
+		for b in bal1[ac]:
+			tick = await read_ticker(b+"/BTS")
+			for t in enumerate(tick):
+				if t[1] == float('Infinity'):
+					tick[t[0]] = 0
+			bal1[ac][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Redisdb.hget("asset1:" + b, 'precision'))])
 
 	margin_lock_BTS = 0
 	margin_lock_USD = 0
@@ -359,8 +362,9 @@ async def open_positions():
 	if alist is None or len(alist) == 0:
 		return None
 
-	ob = []
+	ob = {}
 	for account in alist:
+		ob[account[0]] = []
 		try:
 			account_data = Bitshares.rpc.get_full_accounts([account[0]], False)[0][1]
 		except:
@@ -382,6 +386,7 @@ async def open_positions():
 				except Exception as err:
 					print(err.__repr__())
 			if len(call_orders) > 0:
+				#TODO: without use?
 				Redisdb.setex("balances_callorders", 300, json.dumps(call_orders))
 
 		# {'top_n_control_flags': 0, 'statistics': '2.6.203202', 'id': '1.2.203202', 'membership_expiration_date': '1969-12-31T23:59:59', 'lifetime_referrer': '1.2.203202', 'lifetime_referrer_fee_percentage': 8000, 'blacklisting_accounts': [], 'options': {'num_committee': 3, 'extensions': [], 'votes': ['0:91', '0:147', '0:173', '2:194', '2:224', '2:231', '2:233'], 'voting_account': '1.2.266887', 'memo_key': 'BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 'num_witness': 0}, 'referrer_rewards_percentage': 0, 'name': 'tximiss0', 'active': {'weight_threshold': 1, 'key_auths': [['BTS8QjksGCVaCKmZyspr7sraF77HDE7RQk44w8FgApcYQKtQUpwwT', 1]], 'address_auths': [], 'account_auths': [['1.2.446518', 1]]}, 'referrer': '1.2.203202', 'owner_special_authority': [0, {}], 'whitelisting_accounts': [], 'network_fee_percentage': 2000, 'registrar': '1.2.203202', 'active_special_authority': [0, {}], 'owner': {'weight_threshold': 1, 'key_auths': [['BTS7QyUi34KRVmRR4wqTevosoz4BrKGMfR5HFVSmAW17DfUXkTYEK', 1]], 'address_auths': [], 'account_auths': []}, 'cashback_vb': '1.13.2164', 'blacklisted_accounts': [], 'whitelisted_accounts': []}
@@ -407,34 +412,36 @@ async def open_positions():
 				total = round(amount_quote * price, base_asset[1])
 				print("buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, date)
 				#           0       1               2                   3           4       5       6       7       8               9           10
-				ob.append(["buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, total, date,
+				ob[account[0]].append(["buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, total, date,
 						   quote_asset[1], base_asset[1], lo['id']])
 			else:
 				price = round(amount_quote / amount_base, base_asset[1])
 				total = round(amount_base * price, base_asset[1])
 				print("sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, date)
-				ob.append(["sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, total, date,
+				ob[account[0]].append(["sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, total, date,
 						   base_asset[1], quote_asset[1], lo['id']])
 
 	# Open positions are part of balance
 	if Redisdb.get("balances_openpos") is None:
-		opos = [[x[1], x[2]] for x in ob if x[0] == 'sell']
-		opos.extend([[x[3], x[4]] for x in ob if x[0] == 'buy'])
-		opos.sort(key=lambda x: x[0])
 		opos2 = {}
-		asset = ''
-		tot = 0
-		for o in opos:
-			if asset != o[0] and asset != '':
-				opos2[asset] = tot
-				asset, tot = o[0], o[1]
-			else:
-				tot += o[1]
-				if asset == '':
-					asset = o[0]
-		if tot > 0:
-			opos2[asset] = tot
-		# store open pos balances with expiration
+		for acc in ob:
+			opos2[acc] = {}
+			opos = [[x[1], x[2]] for x in ob[acc] if x[0] == 'sell']
+			opos.extend([[x[3], x[4]] for x in ob[acc] if x[0] == 'buy'])
+			opos.sort(key=lambda x: x[0])
+			asset = ''
+			tot = 0
+			for o in opos:
+				if asset != o[0] and asset != '':
+					opos2[acc][asset] = tot
+					asset, tot = o[0], o[1]
+				else:
+					tot += o[1]
+					if asset == '':
+						asset = o[0]
+			if tot > 0:
+				opos2[acc][asset] = tot
+			# store open pos balances with expiration
 		Redisdb.setex("balances_openpos", 300, json.dumps(opos2))
 	return ob
 
@@ -497,3 +504,7 @@ async def get_market_trades(data):
 	return movs
 
 
+def order_delete(order_id, wif):
+	#TODO conection from parent
+	global WBTS
+	status = (rtn.decode('utf8') == '1')

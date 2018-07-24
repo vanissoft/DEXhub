@@ -14,7 +14,7 @@ Cache = None
 class Stats:
 
 	def _load_last_data(self):
-		os.chdir('/tank/lana/bitshares/dex_hub_ev1/data')
+		os.chdir('../data')
 		from glob import glob
 		files = glob('*.parquet')
 		files.sort()

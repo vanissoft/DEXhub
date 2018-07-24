@@ -21,8 +21,6 @@ import base64
 import pickle
 import blockchain, accounts, ohlc_analysers, market_statistics
 
-Master_hash = None
-Master_unlocked = False
 
 WBTS = None
 Active_module = None
@@ -39,7 +37,7 @@ def init():
 	"""
 	import os
 	global Assets_id, Assets_name
-	os.chdir('/tank/lana/bitshares/dex_hub_ev1/data')
+	os.chdir('../data')
 	with open('assets.pickle', 'rb') as h:
 		tmp = pickle.load(h)
 	Assets_id = {k:v for (k,v) in [(k,v[0]) for (k,v) in tmp.items()]}
@@ -51,12 +49,11 @@ def init():
 
 
 
-
 def check_for_master_password():
 	msg = None
-	if not Master_unlocked:
+	if not master_unlocked():
 		msg = "Unlock with master password first."
-	elif Master_hash is None:
+	elif master_hash() is None:
 		msg = "Setup a master password first and then unlock."
 	if msg is not None:
 		Redisdb.rpush("datafeed", json.dumps({'module': "general", 'message': msg,'error': True}))
@@ -64,7 +61,42 @@ def check_for_master_password():
 	return True
 
 
+def master_hash(hash=None):
+	if hash is None:
+		rtn = Redisdb.get("master_hash")
+		if rtn is None:
+			rtn = Redisdb.get("settings_misc")
+			if rtn is None:
+				return None
+			settings = json.loads(rtn.decode('utf8'))
+			if "master_password" in settings:
+				hash = settings['master_password']
+				Redisdb.set("master_hash", hash)
+			else:
+				return None
+		else:
+			hash = rtn.decode('utf8')
+	else:
+		Redisdb.set("master_hash", hash)
+	return hash
 
+
+def master_unlocked(status=None):
+	if status is None:
+		rtn = Redisdb.get("master_unlocked")
+		if rtn is None:
+			return False
+		status = (rtn.decode('utf8')=='1')
+	else:
+		Redisdb.set("master_unlocked", status)
+		status = (status == '1')
+	return status
+
+
+def privileged_connection(account_name):
+	accs = accounts.account_list(master_unlocked(), master_hash())
+	WBTS = config.BitShares(node=WSS_NODE, wif='123123123')
+	
 
 class Operations_listener():
 
@@ -141,11 +173,11 @@ class Operations_listener():
 					  json.dumps({'module': Active_module, 'market_trades': {'market': data['market'], 'data': movs}}))
 
 	async def account_list(self, dummy):
-		accs = accounts.account_list(Master_unlocked, Master_hash)
+		accs = accounts.account_list(master_unlocked(), master_hash())
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_account_list': accs}))
 
 	async def account_new(self, data):
-		accs = accounts.account_new(data, Master_hash)
+		accs = accounts.account_new(data, master_hash())
 		Redisdb.set("settings_accounts", json.dumps(accs))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_account_list': accs}))
 
@@ -155,7 +187,6 @@ class Operations_listener():
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Account deleted"}))
 
 	async def save_misc_settings(self, dat):
-		global Master_hash
 		rtn = Redisdb.get("settings_misc")
 		if rtn is None:
 			settings = {}
@@ -164,8 +195,7 @@ class Operations_listener():
 		for k in dat['data']:
 			if k == "master_password":
 				if dat['data'][k].lstrip() != '':
-					Master_hash = base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data'][k]), 'utf8')).digest()).decode('utf8')
-					settings[k] = Master_hash
+					settings[k] = master_hash(base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data'][k]), 'utf8')).digest()).decode('utf8'))
 			else:
 				settings[k] = dat['data'][k]
 		Redisdb.set("settings_misc", json.dumps(settings))
@@ -181,19 +211,21 @@ class Operations_listener():
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_misc': settings}))
 
 	async def order_delete(self, data):
+		# need account 
+		conn = privileged_connection()
+		accs = accounts.account_list(master_unlocked(), master_hash())
 		id = data['id']
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(id)}))
+		blockchain.order_delete()
 
 	async def master_unlock(self, dat):
-		global Master_unlocked, WBTS
-		if base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data']), 'utf8')).digest()).decode('utf8') == Master_hash:
-			Master_unlocked = True
+		if base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data']), 'utf8')).digest()).decode('utf8') == master_hash():
+			master_unlocked(1)
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'master_unlock': {'message': 'unlocked', 'error': False}}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Unlocked", 'error': False}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'reload': 1}))
-			#WBTS = BitShares(node="wss://bitshares.openledger.info/ws", wif=dat['form']['key'])
 		else:
-			Master_unlocked = False
+			master_unlocked(0)
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'master_unlock': {'message': "password does not match", 'error': True}}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Password does not match", 'error': True}))
 
@@ -240,10 +272,6 @@ class Operations_listener():
 
 
 	async def do_operations(self):
-		global Master_hash
-		rtn = Redisdb.get("settings_misc")
-		if rtn is not None:
-			Master_hash = json.loads(rtn.decode('utf8'))['master_password']
 
 		while True:
 			op = Redisdb.lpop("operations")
@@ -255,6 +283,7 @@ class Operations_listener():
 			await self.do_ops(op)
 
 
+master_unlocked(0)
 
 
 

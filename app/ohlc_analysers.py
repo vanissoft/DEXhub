@@ -20,7 +20,7 @@ class Common:
 
 	# TODO: allow to incremental adding of data
 	def load_data(self):
-		os.chdir('/tank/lana/bitshares/dex_hub_ev1/data')
+		os.chdir('../data')
 		from glob import glob
 		files = glob('*.parquet')
 		dfl = []
@@ -213,7 +213,7 @@ def test_prophet():
 
 if __name__ == "__main__":
 	import os
-	os.chdir('/tank/lana/bitshares/dex_hub_ev1/data')
+	os.chdir('../data')
 	print("Starting")
 	print("ok1")
 	test_prophet()

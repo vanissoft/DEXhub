@@ -107,15 +107,14 @@ def table_drawn(settings):
 def incoming_data(data):
 	global Order_pos, Order_id_list
 	# [market, 'sell', "{0:,.5f}".format(q1), "{0:,.8f}".format(q2 / q1), "{0:,.5f}".format(q2), t[1]]
-	print(">>>>modlimitorders")
-	print(data['module'], Module_name)
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
 	if 'open_positions' in data:
-		print(data.keys())
 		if data['open_positions'] is None:
 			return
 
+		#TODO: make multi account like balances. meanwhile get first account only
+		data['open_positions'] = data['open_positions'][list(data['open_positions'])[0]]
 		Order_id_list = []
 		Order_id_deleted = []
 		#jq('#panel1').addClass('ld-loading')
