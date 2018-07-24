@@ -15,6 +15,7 @@ Module_name = "balances"
 Accounts = []
 Account_active = 'All'
 Datatable_created = False
+Dt1 = None
 
 Last = None
 
@@ -60,19 +61,22 @@ def on_tabshown(ev):
 
 
 def datatable_create(dt_rows, precision):
-	global Datatable_created
+	global Datatable_created, Dt1
 	cols = ['Asset', 'Total', 'Available', 'In Open Orders', 'Value in USD', '% of portfolio', 'Var % Over BTS']
 
 	def dt_format(data, type, row, meta):
 		tmpl = '{0:,.' + str(precision[row[0]]) + 'f}'
 		return tmpl.format(data)
 
-	if Datatable_created:
-		jq('#table2').DataTable().clear()
-		jq('#table2').DataTable().destroy()
+	if Dt1 is not None:
+		Dt1.clear()
+		Dt1.destroy()
+	#if Datatable_created:
+		#jq('#table2').DataTable().clear()
+		#jq('#table2').DataTable().destroy()
 
 	# TODO: numeric alignment to the right doesn't work?
-	jq('#table2').DataTable({"data": dt_rows, "columns": [{'title': v} for v in cols],
+	Dt1 = jq('#table2').DataTable({"data": dt_rows, "columns": [{'title': v} for v in cols],
 							 "order": [[4, "desc"]],
 							 "columnDefs": [{"targets": 1, "render": dt_format}, {"targets": 2, "render": dt_format},
 											{"targets": 3, "render": dt_format}],
@@ -92,7 +96,6 @@ def click_change_account(ev):
 	jq('#' + ev.target.id).removeClass('btn-default')
 	jq('#' + ev.target.id).addClass('btn-accent')
 	Account_active = ev.target.id[len('bAccount_'):]
-	print("query for", ev.target.id, '#'+ev.target.id, Account_active)
 	incoming_data(Last)
 
 
@@ -142,6 +145,10 @@ def incoming_data(data):
 		create_account_selector(Accounts)
 
 	if 'balances' in data:
+		lacc = "Account: <b>"+Account_active+"</b>"
+		document['lAcc1'].innerHTML = lacc
+		document['lAcc2'].innerHTML = lacc
+		document['lAcc3'].innerHTML = lacc
 		balance = account_balances(data)
 		Last = data
 		init_echart(balance)
