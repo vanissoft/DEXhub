@@ -146,6 +146,9 @@ if __name__ == '__main__':
 			time.sleep(1)
 
 	proc2 = []
+	#for w in range(0, WORKERS):
+	#	proc2.append(subprocess.Popen("python3 dexhub_worker.py", shell=True))
+
 
 	# initial load of assets
 	#proc2.append(subprocess.Popen("python3 bitshares_data.py init", shell=True))
@@ -158,8 +161,8 @@ if __name__ == '__main__':
 
 	app.run(host="0.0.0.0", port=PORT, workers=1)
 
-	proc1.kill()
 	time.sleep(1)
 	for p in proc2:
 		p.kill()
 	time.sleep(1)
+	proc1.kill()

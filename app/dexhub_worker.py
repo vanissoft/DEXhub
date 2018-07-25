@@ -15,11 +15,11 @@ import asyncio
 import json
 import arrow
 import random
-from cryptography.fernet import Fernet
 import hashlib
 import base64
 import pickle
 import blockchain, accounts, ohlc_analysers, market_statistics
+import passwordlock
 
 
 WBTS = {}
@@ -51,53 +51,22 @@ def init():
 
 def check_for_master_password():
 	msg = None
-	if not master_unlocked():
+	if Redisdb.get('master_hash') is None:
 		msg = "Unlock with master password first."
-	elif master_hash() is None:
-		msg = "Setup a master password first and then unlock."
 	if msg is not None:
 		Redisdb.rpush("datafeed", json.dumps({'module': "general", 'message': msg,'error': True}))
 		return False
 	return True
 
 
-def master_hash(hash=None):
-	if hash is None:
-		rtn = Redisdb.get("master_hash")
-		if rtn is None:
-			rtn = Redisdb.get("settings_misc")
-			if rtn is None:
-				return None
-			settings = json.loads(rtn.decode('utf8'))
-			if "master_password" in settings:
-				hash = settings['master_password']
-				Redisdb.set("master_hash", hash)
-			else:
-				return None
-		else:
-			hash = rtn.decode('utf8')
-	else:
-		Redisdb.set("master_hash", hash)
-	return hash
 
-
-def master_unlocked(status=None):
-	if status is None:
-		rtn = Redisdb.get("master_unlocked")
-		if rtn is None:
-			return False
-		status = (rtn.decode('utf8')=='1')
-	else:
-		Redisdb.set("master_unlocked", status)
-		status = (status == '1')
-	return status
 
 
 def privileged_connection(account_name):
 	if not check_for_master_password():
-		return None
-	if account_name not in WBTS or not WBTS['tximiss0'].is_connected():
-		tmp = accounts.account_list(master_unlocked(), master_hash())
+		return
+	if account_name not in WBTS or not WBTS[account_name].is_connected():
+		tmp = accounts.account_list()
 		wif = {x[0]: x[2] for x in tmp}
 		WBTS[account_name] = BitShares(node=WSS_NODE, wif=wif[account_name])
 	return WBTS[account_name]
@@ -178,11 +147,11 @@ class Operations_listener():
 					  json.dumps({'module': Active_module, 'market_trades': {'market': data['market'], 'data': movs}}))
 
 	async def account_list(self, dummy):
-		accs = accounts.account_list(master_unlocked(), master_hash())
+		accs = accounts.account_list()
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_account_list': accs}))
 
 	async def account_new(self, data):
-		accs = accounts.account_new(data, master_hash())
+		accs = accounts.account_new(data)
 		Redisdb.set("settings_accounts", json.dumps(accs))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_account_list': accs}))
 
@@ -200,7 +169,7 @@ class Operations_listener():
 		for k in dat['data']:
 			if k == "master_password":
 				if dat['data'][k].lstrip() != '':
-					settings[k] = master_hash(base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data'][k]), 'utf8')).digest()).decode('utf8'))
+					passwordlock.store_mp(dat['data'][k])
 			else:
 				settings[k] = dat['data'][k]
 		Redisdb.set("settings_misc", json.dumps(settings))
@@ -224,13 +193,11 @@ class Operations_listener():
 		blockchain.order_delete(id=data['id'], conn=conn, account=data['account'])
 
 	async def master_unlock(self, dat):
-		if base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data']), 'utf8')).digest()).decode('utf8') == master_hash():
-			master_unlocked(1)
+		if passwordlock.check_mp(dat['data']):
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'master_unlock': {'message': 'unlocked', 'error': False}}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Unlocked", 'error': False}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'reload': 1}))
 		else:
-			master_unlocked(0)
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'master_unlock': {'message': "password does not match", 'error': True}}))
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Password does not match", 'error': True}))
 
@@ -288,7 +255,6 @@ class Operations_listener():
 			await self.do_ops(op)
 
 
-master_unlocked(0)
 
 
 
