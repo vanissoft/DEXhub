@@ -504,7 +504,6 @@ async def get_market_trades(data):
 	return movs
 
 
-def order_delete(order_id, wif):
-	#TODO conection from parent
-	global WBTS
-	status = (rtn.decode('utf8') == '1')
+def order_delete(id, conn, account):
+	rtn = conn.cancel(id, account=account)
+	Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Success"}))

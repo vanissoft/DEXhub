@@ -25,7 +25,7 @@ MarketTab = {}
 MarketTab2 = {}
 ChartData = {}
 Order_pos = {}
-Order_id_list = []  # list of order's ids
+Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
 Ws_comm = None
 
@@ -49,7 +49,8 @@ def click_delete_order(ev):
 	global Order_id_deleted
 	id = ev.target.id.split("_")[1]
 	Order_id_deleted.append(id)
-	Ws_comm.send({'call': 'order_delete', 'id': id, 'module': Module_name, 'operation': 'enqueue'})
+	print("delete order", id, 'account:', Order_id_list[id])
+	Ws_comm.send({'call': 'order_delete', 'id': id, 'account': Order_id_list[id], 'module': Module_name, 'operation': 'enqueue'})
 	jq('#tableExample1').DataTable().rows().invalidate('data')
 	jq('#tableExample1').DataTable().draw(False)
 
@@ -113,13 +114,15 @@ def incoming_data(data):
 		if data['open_positions'] is None:
 			return
 
-		#TODO: make multi account like balances. meanwhile get first account only
-		data['open_positions'] = data['open_positions'][list(data['open_positions'])[0]]
-		Order_id_list = []
+		dat1 = []
+		for acc in data['open_positions']:
+			for pos in data['open_positions'][acc]:
+				pos.append(acc)
+			dat1.extend(data['open_positions'][acc])
+		Order_id_list = {}
 		Order_id_deleted = []
 		#jq('#panel1').addClass('ld-loading')
 		cols = "Market,Operation,Quantity,Price,Total,Date"
-		dat1 = data['open_positions']
 		dat1.sort(key=lambda x: x[0]+x[3]+x[1])
 		markets = dict()
 
@@ -130,7 +133,8 @@ def incoming_data(data):
 			tmpl1 = "{:,."+str(d[8])+"f}"
 			tmpl2 = "{:,."+str(d[9])+"f}"
 			market = d[1]+"/"+d[3]
-			Order_id_list.append(d[10])
+			# {1.7.12321: 'account'}
+			Order_id_list[d[10]] = d[11]
 			dat.append([market, d[0], tmpl1.format(d[2]), tmpl2.format(d[5]), tmpl2.format(d[6]), d[7], d[10]])
 			if market in markets:
 				markets[market] += 1

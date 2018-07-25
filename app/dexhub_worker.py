@@ -22,7 +22,7 @@ import pickle
 import blockchain, accounts, ohlc_analysers, market_statistics
 
 
-WBTS = None
+WBTS = {}
 Active_module = None
 Assets_id = {}
 Assets_name = {}
@@ -94,9 +94,14 @@ def master_unlocked(status=None):
 
 
 def privileged_connection(account_name):
-	accs = accounts.account_list(master_unlocked(), master_hash())
-	WBTS = config.BitShares(node=WSS_NODE, wif='123123123')
-	
+	if not check_for_master_password():
+		return None
+	if account_name not in WBTS or not WBTS['tximiss0'].is_connected():
+		tmp = accounts.account_list(master_unlocked(), master_hash())
+		wif = {x[0]: x[2] for x in tmp}
+		WBTS[account_name] = BitShares(node=WSS_NODE, wif=wif[account_name])
+	return WBTS[account_name]
+
 
 class Operations_listener():
 
@@ -212,11 +217,11 @@ class Operations_listener():
 
 	async def order_delete(self, data):
 		# need account 
-		conn = privileged_connection()
-		accs = accounts.account_list(master_unlocked(), master_hash())
-		id = data['id']
-		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(id)}))
-		blockchain.order_delete()
+		conn = privileged_connection(data['account'])
+		if conn is None:
+			return
+		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(data['id'])}))
+		blockchain.order_delete(id=data['id'], conn=conn, account=data['account'])
 
 	async def master_unlock(self, dat):
 		if base64.urlsafe_b64encode(hashlib.sha256(bytes(str(dat['data']), 'utf8')).digest()).decode('utf8') == master_hash():
@@ -277,8 +282,8 @@ class Operations_listener():
 			op = Redisdb.lpop("operations")
 			if op is None:
 				op = Redisdb.lpop("operations_bg")
-				await asyncio.sleep(.01)
 				if op is None:
+					await asyncio.sleep(.01)
 					continue
 			await self.do_ops(op)
 
