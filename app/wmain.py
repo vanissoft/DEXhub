@@ -69,7 +69,6 @@ Callbacks = {}
 Active_module = None
 Incoming_data = {}
 
-#TODO: catch all the transmissions and store for deferred delivery
 
 def ws_received(data):
 	global Ws_comm

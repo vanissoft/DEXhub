@@ -36,8 +36,6 @@ def drag_receive(ev, ui):
 		print(Panels[panel]['column'], column)
 		if Panels[panel]['echart_obj'] is not None:
 			Panels[panel]['echart_obj'].resize()
-	print("destino:", column)
-	print("panels:", Panels)
 	save_layout()
 
 
@@ -49,7 +47,7 @@ def query_make(mkt, chart_type):
 			'date_to': datetime.datetime.now().isoformat(),
 			'module': Module_name, 'operation': 'enqueue_bg'})
 	elif chart_type == "depth":
-		Comm.send({'call': 'orderbook', 'market': mkt, 'module': Module_name, 'operation': 'enqueue_bg'})
+		Comm.send({'call': 'get_orderbook', 'market': mkt, 'module': Module_name, 'operation': 'enqueue_bg'})
 
 
 def new_panel(market, column, chart_type, data=None):
@@ -138,27 +136,13 @@ def init(comm):
 	Comm.send({'call': 'open_positions', 'module': "general", 'operation': 'enqueue'})
 	print("init---------")
 	print(Panel_count)
-	if Panel_count == 0:
-		Panels = {}
-		Comm.send({'call': 'marketpanels_loadlayout', 'module': "general", 'operation': 'enqueue'})
-	else:
-		Panel_count = 0
-		reload_panels()
+	Panels = {}
+	Comm.send({'call': 'marketpanels_loadlayout', 'module': "general", 'operation': 'enqueue'})
 
 	jq('.draggable-container [class*=col]').sortable({"handle": ".panel-body", "connectWith": "[class*=col]",
 		"receive": drag_receive,
 		"tolerance": 'pointer', "forcePlaceholderSize": True, "opacity": 0.8}).disableSelection()
 	wglobals.set_timer(0, refresh_data, 5)
-
-
-def reload_panels():
-	global Panels
-	for p in [k for k in Panels]:
-		if Panels[p]['data'] is None:
-			continue
-		new_panel(Panels[p]['market'], Panels[p]['column'], Panels[p]['chart_type'], Panels[p]['data'])
-	for p in Panels:
-		incoming_data({'data': Panels[p]['data']})
 
 
 def panel(id, mkt, column, title):
@@ -233,7 +217,7 @@ def incoming_data(data):
 				og.load_data(Panels[p]['data']['orderbook']['data'])
 
 	elif 'marketpanels_layout' in data:
-		print(data['marketpanels_layout'])
+		print("layout:", data['marketpanels_layout'])
 		for panel in data['marketpanels_layout']:
 			print(panel)
 			if len(panel) < 3:  # compatibility

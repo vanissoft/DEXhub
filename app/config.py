@@ -5,7 +5,7 @@
 
 PORT = 8808
 REDIS_PORT = 6386
-WSS_NODE = "wss://eu.nodes.bitshares.ws"
+WSS_NODE = "wss://eu.openledger.info/ws"
 WORKERS = 2
 
 import redis
