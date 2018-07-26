@@ -131,7 +131,7 @@ async def periodic():
 
 if __name__ == '__main__':
 	# Develop switch between queue and direct work. True for be able to put Breakpoints
-	Develop = ('Z68X' in socket.getfqdn()) and False
+	Develop = ('Z68X' in socket.getfqdn()) and True
 	proc1 = subprocess.Popen("redis-server --port "+str(REDIS_PORT), shell=True)
 	while True:
 		try:
@@ -146,8 +146,9 @@ if __name__ == '__main__':
 			time.sleep(1)
 
 	proc2 = []
-	#for w in range(0, WORKERS):
-	#	proc2.append(subprocess.Popen("python3 dexhub_worker.py", shell=True))
+	if not Develop:
+		for w in range(0, WORKERS):
+			proc2.append(subprocess.Popen("python3 dexhub_worker.py", shell=True))
 
 
 	# initial load of assets

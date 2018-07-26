@@ -86,7 +86,11 @@ def check_mp(pwtxt):
 	print("check_mp stored_pass):", mh)
 	cipher = Fernet(hash)  # cipher with hash
 	tmp = cipher.decrypt(mh.encode('utf8')).decode('utf8')
-	return ('unlocked' in tmp)
+	if 'unlocked' in tmp:
+		if Redisdb.get('master_hash') is None:
+			Redisdb.setex('master_hash', 60 * 60, generate_mp(pwtxt, key=True)[1])
+		return True
+	return False
 
 def encrypt_data(data):
 	mh = Redisdb.get('master_hash')
