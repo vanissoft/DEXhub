@@ -6,6 +6,7 @@
 
 '''
 
+import os
 import arrow
 import matplotlib.pyplot as plt
 plt.style.use('Solarize_Light2')

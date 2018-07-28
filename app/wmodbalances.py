@@ -133,11 +133,32 @@ def account_balances(data):
 	else:
 		return bal0[Account_active]
 
+def account_margin(data, asset='USD'):
+	if asset == 'USD':
+		lock = data['margin_lock_USD']
+	else:
+		lock = data['margin_lock_BTS']
+	amount = 0
+	print("margin_lock", lock)
+	if Account_active == "All":
+		for acc in lock:
+			amount += lock[acc]
+		return amount
+	else:
+		if Account_active in lock:
+			return lock[Account_active]
+		else:
+			return 0
+
 
 def incoming_data(data):
 	global Last, Accounts
 	if 'uselocalcache' in data:
-		data = Last
+		if data['uselocalcache']:
+			print("using cache!")
+			data = Last
+		else:
+			Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
 	if 'settings_account_list' in data:
 		Accounts = [x[0] for x in data['settings_account_list']]
 		Accounts.insert(0, "All")
@@ -164,7 +185,7 @@ def incoming_data(data):
 			total_base += total
 		ord.sort(key=lambda x: x[1], reverse=True)
 
-		mlock = data['margin_lock_USD']
+		mlock = account_margin(data)
 		mlock_str = "{0:,.2f}".format(mlock)
 		total_str = "{0:,.2f}".format(total_base)
 		total2_str = "{0:,.2f}".format(total_base+mlock)

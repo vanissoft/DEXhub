@@ -78,13 +78,14 @@ class Operations_listener():
 		asyncio.get_event_loop().run_until_complete(self.do_operations())
 
 	async def letmeuselocalcache(self, data):
-		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'uselocalcache': True}))
+		#TODO: prevent the use of cache if the settings have changed
+		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'uselocalcache': False}))
 
 	async def get_balances(self, data):
 		# TODO: another column for asset collateral
 		bal1, margin_lock_BTS, margin_lock_USD = await blockchain.get_balances()
 		if bal1 is None:
-			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'message': "No account defined!", 'error': True}))
+			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "No account defined!", 'error': True}))
 		else:
 			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'balances': bal1,
 												'margin_lock_BTS': margin_lock_BTS,

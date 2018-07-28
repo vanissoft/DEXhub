@@ -224,10 +224,6 @@ async def account_list():
 
 
 async def read_balances():
-	bal = Redisdb.get('cache_balances')
-	if bal is not None:
-		bal = json.loads(bal.decode('utf8'))
-		return bal
 
 	alist = await account_list()
 	if len(alist) == 0:
@@ -291,19 +287,25 @@ async def get_balances():
 					tick[t[0]] = 0
 			bal1[ac][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Redisdb.hget("asset1:" + b, 'precision'))])
 
-	margin_lock_BTS = 0
-	margin_lock_USD = 0
+	margin_lock_BTS = {}
+	margin_lock_USD = {}
 	bal3 = Redisdb.get("balances_callorders")
-	if bal3 is not None:
+	if bal3 is not None or True:
 		bal3 = json.loads(bal3.decode('utf8'))
 		for b in bal3:
-			tick = await read_ticker(b[0]+"/BTS")
+			tick = await read_ticker(b[1]+"/BTS")
 			for t in enumerate(tick):
 				if t[1] == float('Infinity'):
 					tick[t[0]] = 0
-			# assume that collateral is always BTS and value in USD (base)
-			margin_lock_BTS += b[1]
-			margin_lock_USD += (b[3] * base[0]) -  (b[1] * tick[0] * base[0])
+				# assume that collateral is always BTS and value in USD
+			if b[0] in margin_lock_BTS:
+				margin_lock_BTS[b[0]] += b[4]
+			else:
+				margin_lock_BTS[b[0]] = b[4]
+			if b[0] in margin_lock_USD:
+				margin_lock_USD[b[0]] += (b[4] * base[0]) -  (b[2] * tick[0] * base[0])
+			else:
+				margin_lock_USD[b[0]] = (b[4] * base[0]) -  (b[2] * tick[0] * base[0])
 
 	return (bal1, margin_lock_BTS, margin_lock_USD)
 
@@ -370,7 +372,7 @@ async def open_positions():
 		except:
 			continue
 		# read call orders
-		if Redisdb.get("balances_callorders") is None:
+		if Redisdb.get("balances_callorders") is None or True:
 			call_orders = []
 			for co in account_data['call_orders']:
 				quote = co['call_price']['quote']['asset_id']
@@ -382,7 +384,7 @@ async def open_positions():
 				try:
 					amount_debt = round(int(co['debt']) / 10 ** quote_asset[1], quote_asset[1])
 					amount_collateral = round(int(co['collateral']) / 10 ** base_asset[1], base_asset[1])
-					call_orders.append([quote_asset[0], amount_debt, base_asset[0], amount_collateral])
+					call_orders.append([account[0], quote_asset[0], amount_debt, base_asset[0], amount_collateral])
 				except Exception as err:
 					print(err.__repr__())
 			if len(call_orders) > 0:
