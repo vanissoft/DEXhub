@@ -24,3 +24,6 @@ First start main.py and then dexhub_data.py in debug mode for being able to trac
 Brython debugging is somewhat weird to bug hunting as the Python-Javascript conversion messes the source code, so there is need to make use of poor-man's debugging with print staments along the code.
 
 Cheers.
+
+
+Screenshots in issue #49
