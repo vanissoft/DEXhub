@@ -60,7 +60,7 @@ class Stats:
 
 			self.stats_by_token = d3
 
-			self.stats_by_pair = df.groupby('pair').agg({'quote_amount': 'sum', 'base_amount': 'sum', 'price': 'mean', 'pair': 'count'})
+			self.stats_by_pair = df.groupby('pair').agg({'quote_amount': 'sum', 'base_amount': 'sum', 'price': 'mean', 'pair': 'count'}).sort_values('pair', ascending=False)
 			self.stats_by_pair['pair_id'] = self.stats_by_pair.index
 			self.stats_by_pair['pair_text'] = self.stats_by_pair['pair_id'].apply(lambda x: self.Assets_id[x.split(':')[0]] + "/" + self.Assets_id[x.split(':')[1]])
 

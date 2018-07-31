@@ -79,3 +79,22 @@ def account_delete(data):
 	clear_cache()
 	return accounts
 
+def order_history(account_name):
+	"""
+	{'id': '1.11.362687717',
+	'op': [4, {'fee': {'amount': 25921, 'asset_id': '1.3.113'},
+			'order_id': '1.7.145256531', 'account_id': '1.2.203202',
+			'pays': {'amount': 202507354, 'asset_id': '1.3.0'},
+			'receives': {'amount': 25921671, 'asset_id': '1.3.113'},
+			'fill_price': {'base': {'amount': 330800000, 'asset_id': '1.3.0'},
+			'quote': {'amount': 42343592, 'asset_id': '1.3.113'}},
+			'is_maker': True}], 'result': [0, {}], 'block_num': 29179328, 'trx_in_block': 19, 'op_in_trx': 0, 'virtual_op': 8617}
+
+	:param account_name:
+	:return:
+	"""
+	#TODO:
+
+	from bitshares.account import Account
+	Account(account_name).ensure_full()
+	movs = [x for x in Account(account_name).history(only_ops=['fill_order'])]

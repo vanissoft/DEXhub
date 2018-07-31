@@ -151,12 +151,6 @@ if __name__ == '__main__':
 			proc2.append(subprocess.Popen("python3 dexhub_worker.py", shell=True))
 
 
-	# initial load of assets
-	#proc2.append(subprocess.Popen("python3 bitshares_data.py init", shell=True))
-
-	# operations listener
-	#proc2.append(subprocess.Popen("python3 bitshares_data.py operations_listener", shell=True))
-
 	app.add_task(feeder())
 	app.add_task(periodic())
 
