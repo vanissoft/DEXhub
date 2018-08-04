@@ -18,7 +18,7 @@ import random
 import hashlib
 import base64
 import pickle
-import blockchain, accounts, ohlc_analysers, market_statistics
+import blockchain, accounts, ohlc_analysers, market_data
 import passwordlock
 
 
@@ -92,22 +92,22 @@ class Operations_listener():
 												'margin_lock_USD': margin_lock_USD}))
 
 	async def get_tradestats_token(self, data):
-		stats = market_statistics.Stats()
+		stats = market_data.Stats()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'],
 							'stats_token': stats.stats_by_token[['asset_name', 'ops', 'volume', 'ops_day', 'volume_day']][:100].to_json(orient='values')}))
 
 	async def get_tradestats_pair(self, data):
-		stats = market_statistics.Stats()
+		stats = market_data.Stats()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'],
-							'stats_pair': stats.stats_by_pair[['pair_text', 'pair', 'base_amount', 'quote_amount', 'price']][:200].to_json(orient='values')}))
+							'stats_pair': stats.stats_by_pair[['pair_text', 'pair', 'pays_amount', 'receives_amount', 'price']][:200].to_json(orient='values')}))
 
 	async def get_tradestats_account(self, data):
-		stats = market_statistics.Stats()
+		stats = market_data.Stats()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'],
 							'stats_account': stats.stats_by_account[['account_id', 'pair']][:100].to_json(orient='values')}))
 
 	async def get_tradestats_accountpair(self, data):
-		stats = market_statistics.Stats()
+		stats = market_data.Stats()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'],
 							'stats_accountpair': stats.stats_by_account_pair[['account_id', 'pair_text', 'pair']][:100].to_json(orient='values')}))
 
@@ -130,20 +130,21 @@ class Operations_listener():
 	async def get_last_trades(self, data):
 		global Ohlc_Analyser
 		if Ohlc_Analyser is None:
-			Ohlc_Analyser = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-31), arrow.utcnow()))
+			Ohlc_Analyser = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()))
 		a = Ohlc_Analyser
 		tmp = data['market'].split('/')
 		if 'CADASTRAL' in tmp:
 			print()
 		mkt = Assets_name[tmp[0]]+':'+Assets_name[tmp[1]]
 		a.filter(pair=mkt)
+		#a.filter()
 		a.ohlc(timelapse="1h", fill=False)
 		rdates = a.df_ohlc['time'].dt.to_pydatetime().tolist()
 		rdates = [x.isoformat() for x in rdates]
 		movs = [x for x in zip(rdates,
 					 a.df_ohlc.price.open.tolist(), a.df_ohlc.price.close.tolist(),
-					 a.df_ohlc.price.high.tolist(), a.df_ohlc.price.low.tolist(),
-					 a.df_ohlc.base_amount.base_amount.tolist())]
+					 a.df_ohlc.price.low.tolist(), a.df_ohlc.price.high.tolist(),
+					 a.df_ohlc.receives_amount.receives_amount.tolist())]
 		Redisdb.rpush("datafeed",
 					  json.dumps({'module': Active_module, 'market_trades': {'market': data['market'], 'data': movs}}))
 

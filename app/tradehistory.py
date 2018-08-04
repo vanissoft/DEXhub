@@ -55,16 +55,17 @@ def read_trade_history():
 
 	op_list = json.loads(rtn2.content.decode('utf8'))
 	order = namedtuple('order_filled', ['block_num', 'block_time', 'order_id', 'account_id', 'is_maker',
-										'quote_asset', 'quote_amount', 'base_asset', 'base_amount'])
+										'pays_asset', 'pays_amount', 'receives_asset', 'receives_amount'])
 	order_list = []
 	print(" results ", end='')
 	for op in op_list:
 		block_number = op['block_data']['block_num']
 		block_time = op['block_data']['block_time']
-		ot = json.loads(op['operation_history']['op'])[1]
+		otr = json.loads(op['operation_history']['op'])
+		ot = otr[1]
 		order_list.append(order._make([block_number, block_time, ot['order_id'], ot['account_id'], ot['is_maker'],
-									   ot['fill_price']['quote']['asset_id'], ot['fill_price']['quote']['amount'],
-									   ot['fill_price']['base']['asset_id'], ot['fill_price']['base']['amount'],
+									   ot['pays']['asset_id'], ot['pays']['amount'],
+									   ot['receives']['asset_id'], ot['receives']['amount'],
 									   ]))
 	Redisdb.lpush('data', json.dumps(order_list))
 	Redisdb.hset("loaded", date_range, 1)
@@ -118,6 +119,7 @@ def setup(dfrom=None, days=0):
 	else:
 		tbottom = tto - datetime.timedelta(days=days)
 	tfrom = tto - datetime.timedelta(hours=hours)
+	print('tto:', tto, 'tbottom:', tbottom, 'tfrom:', tfrom)
 	while tfrom >= (tbottom-datetime.timedelta(hours=hours)):
 		Redisdb.rpush('queue', json.dumps((tfrom.isoformat(), tto.isoformat())))
 		# dat = json.loads(op.decode('utf8'))
@@ -144,12 +146,12 @@ def start():
 	print("queue:", Redisdb.llen("queue"))
 
 
-def postProcess1():
+def postProcess1(from_idx=0, to_idx=0):
 	Redisdb = redisdb()
 	order = namedtuple('order_filled', ['block_num', 'block_time', 'order_id', 'account_id', 'is_maker',
-										'quote_asset', 'quote_amount', 'base_asset', 'base_amount'])
+										'pays_asset', 'pays_amount', 'receives_asset', 'receives_amount'])
 	df = None
-	ind = 0
+	ind = from_idx
 	batch = []
 	while True:
 		tmp = Redisdb.lindex("data", ind)
@@ -157,8 +159,11 @@ def postProcess1():
 			break
 		batch.append(tmp)
 		ind += 1
+		if to_idx > 0  and ind > to_idx:
+			break
 		print(ind, " ", end='')
 
+	print()
 	print("load dataframe......", end=' ')
 	data_list = []
 	for data in batch:
@@ -168,27 +173,25 @@ def postProcess1():
 			data_list.append(order._make(d))
 	df = pd.DataFrame(data_list)
 	print("ok")
+	print("date_range:", df.block_time.min(), df.block_time.max())
 
 	if df is None:
 		print("Nothing to do")
 		return
 	#order = namedtuple('order_filled', ['block_num', 'block_time', 'order_id', 'account_id', 'is_maker',
-	#									'quote_asset', 'quote_amount', 'base_asset', 'base_amount'])
+	#									'pays_asset', 'pays_amount', 'receives_asset', 'receives_amount'])
 	print("drop duplicates", end=' ')
 	df = df.drop_duplicates()
 	print("ok")
 	print("various", end=' ')
-	df[['quote_amount', 'base_amount']] = df[['quote_amount', 'base_amount']].apply(pd.to_numeric)
+	df[['pays_amount', 'receives_amount']] = df[['pays_amount', 'receives_amount']].apply(pd.to_numeric)
 	df[['block_time']] = df[['block_time']].apply(pd.to_datetime)
-	df[['quote_asset', 'base_asset']] = df[['quote_asset', 'base_asset']].astype('category')
+	df[['pays_asset', 'receives_asset']] = df[['pays_asset', 'receives_asset']].astype('category')
 	print("ok")
 	print("create pair", end=' ')
-	df['pair'] = df[['quote_asset', 'base_asset']].apply(lambda x: ':'.join(x), axis=1)
+	df['pair'] = df[['pays_asset', 'receives_asset']].apply(lambda x: ':'.join(x), axis=1)
 	df[['pair']] = df[['pair']].astype('category')
 	print("ok")
-	date_from = df.block_time.min()
-	date_to = df.block_time.max()
-	print("save to parquet", end=' ')
 	return df
 
 
@@ -202,33 +205,35 @@ def postProcess2(df):
 	except:
 		pass
 
-	s1 = set(df.quote_asset.value_counts().index.tolist())
-	s2 = set(df.base_asset.value_counts().index.tolist())
+	s1 = set(df.pays_asset.value_counts().index.tolist())
+	s2 = set(df.receives_asset.value_counts().index.tolist())
 	s1.update(s2)
 
 	# for dropping unpopular pairs
 	if False:
 		df['popular_pair'] = False
-		df.loc[(df['quote_asset'].isin(s1)) & (df['base_asset'].isin(s1)), 'popular_pair'] = True
+		df.loc[(df['pays_asset'].isin(s1)) & (df['receives_asset'].isin(s1)), 'popular_pair'] = True
 		df.drop(df[df['popular_pair'] == False].index, inplace=True)
 
 	# TODO: there were not all assets in pickle file with this code
 	for s in s1:
 		if s in assets:
 			asset_symbol, asset_precision = assets[s]
+			print(".", end=' ')
 		else:
 			a2 = Asset(s)
 			assets[s] = [a2.symbol, a2.precision]
 			asset_symbol, asset_precision = [a2.symbol, a2.precision]
+			print("new", end=' ')
 		print(asset_symbol)
 		# drop minimal trades (dust?)
 		if False:
 			dust_threshold = 1e5 / 10**asset_precision
-			df.drop(df[(df['quote_asset'] == s) & (df['quote_amount'] < dust_threshold)].index, inplace=True)
-			df.drop(df[(df['base_asset'] == s) & (df['base_amount'] < dust_threshold)].index, inplace=True)
+			df.drop(df[(df['pays_asset'] == s) & (df['pays_amount'] < dust_threshold)].index, inplace=True)
+			df.drop(df[(df['receives_asset'] == s) & (df['receives_amount'] < dust_threshold)].index, inplace=True)
 
-		df.loc[df['quote_asset']==s, 'quote_amount'] /= (10 ** asset_precision)
-		df.loc[df['base_asset'] == s, 'base_amount'] /= (10 ** asset_precision)
+		df.loc[df['pays_asset']==s, 'pays_amount'] /= (10 ** asset_precision)
+		df.loc[df['receives_asset'] == s, 'receives_amount'] /= (10 ** asset_precision)
 
 	with open('assets.pickle', 'wb') as h:
 		pickle.dump(assets, h)
@@ -236,11 +241,10 @@ def postProcess2(df):
 
 	df['price'] = -1
 	# popular pairs are ok
-	df['price'] = df['base_amount'] / df['quote_amount']
+	df['price'] = df['receives_amount'] / df['pays_amount']
 	#df = df.set_index('block_time')
 
 	print(0)
-	import matplotlib.pyplot as plt
 	date_from = df.block_time.min()
 	date_to = df.block_time.max()
 	print("save to parquet", len(df), end=' ')
@@ -262,6 +266,9 @@ def postProcess3():
 	if len(df) > 1:
 		df2 = df2.drop_duplicates()
 
+	print("postprocess 3")
+	print("date range:", df2.block_time.min(), df2.block_time.max())
+
 	df2['month'] = df2.block_time.dt.month
 	months = df2['month'].unique().tolist()
 	year = df2.block_time.min().year
@@ -270,21 +277,23 @@ def postProcess3():
 		if len(file) == 1:
 			file = file[0]
 			df3 = pd.read_parquet(file)
-			last = df3.block_time.max()
 		else:
 			df3 = None
 			file = 'bts_trades_{:04d}{:02d}.parquet'.format(year, month)
-			last = arrow.get(year, month, 1).isoformat()
+		last = arrow.get(year, month, 1).isoformat()
 		next = arrow.get(year, month, 1).shift(months=1)
-		df2 = df2.loc[(df2.block_time >= last) & (df2.block_time < next.isoformat())]
-		if len(df2) > 0:
+		df1 = df2.loc[(df2.block_time >= last) & (df2.block_time < next.isoformat())]
+		print("month:", month, "range:", last, next)
+		if len(df1) > 0:
 			if df3 is not None:
-				df4 = pd.concat((df3,df2))
+				print("concatenating")
+				df4 = pd.concat((df3,df1))
 				df4 = df4.drop_duplicates()
 				print("length", len(df4))
 				df4.to_parquet(file+".hot", 'fastparquet', 'GZIP')
 			else:
-				df2.to_parquet(file+".hot", 'fastparquet', 'GZIP')
+				print("overwrite")
+				df1.to_parquet(file+".hot", 'fastparquet', 'GZIP')
 			os.rename(file+".hot", file)
 	if len(files)>0:
 		for f in files:
@@ -299,7 +308,7 @@ if __name__ == "__main__":
 		print(sys.argv)
 	print("Starting")
 	setup()
-	#setup(arrow.get('2018-07-01'), 32)
+	#setup(arrow.get('2016-08-01'), 60)
 	start()
 	df = postProcess1()
 	postProcess2(df)

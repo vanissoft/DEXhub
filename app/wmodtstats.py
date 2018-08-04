@@ -16,15 +16,19 @@ Ws_comm = None
 
 Last = {}
 
+def get_info():
+	Ws_comm.send({'call': 'get_tradestats_token', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'get_tradestats_account', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'get_tradestats_accountpair', 'module': Module_name, 'operation': 'enqueue'})
+
+
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
 	if len(Last) == 0:
-		Ws_comm.send({'call': 'get_tradestats_token', 'module': Module_name, 'operation': 'enqueue'})
-		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
-		Ws_comm.send({'call': 'get_tradestats_account', 'module': Module_name, 'operation': 'enqueue'})
-		Ws_comm.send({'call': 'get_tradestats_accountpair', 'module': Module_name, 'operation': 'enqueue'})
+		get_info()
 	else:
 		Ws_comm.send({'call': 'letmeuselocalcache', 'module': Module_name, 'operation': 'enqueue'})
 	jq('.nav-tabs a').on('shown.bs.tab', on_tabshown)
@@ -61,7 +65,11 @@ def incoming_data(data):
 	import json
 	global Last
 	if 'uselocalcache' in data:
-		data = Last
+		if data['uselocalcache']:
+			data = Last
+		else:
+			get_info()
+
 	if 'stats_token' in data:
 		Last['stats_token'] = data['stats_token']
 		cols = ['Asset', 'Ops', 'Volume', 'Ops /day', 'Volume /day']
@@ -70,7 +78,7 @@ def incoming_data(data):
 		datatable1_create('table1', cols, coldefs, json.loads(data['stats_token']))
 	if 'stats_pair' in data:
 		Last['stats_pair'] = data['stats_pair']
-		cols = ['Pair', 'Ops', 'Base amount', 'Quote amount', 'Price']
+		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
 		coldefs = [{"targets": 1, "render": _dt_format}, {"targets": 2, "render": _dt_format}, {"targets": 3, "render": _dt_format},
 					   {"targets": 4, "render": _dt_format}]
 		datatable1_create('table2', cols, coldefs, json.loads(data['stats_pair']))

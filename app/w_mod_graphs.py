@@ -169,9 +169,10 @@ class MarketTrades1(graph_orderbook):
 			"responsive": True,
 			"animation": False,
 			"series":  [{"name": 'Dow-Jones index', "type": 'candlestick', "data": self.data['data'],
-							"itemStyle": {"normal": {"color": "#05cf3c", "color0": "#ec0905", "borderColor": None,
+							"itemStyle": {"normal": {"color": "#1a924b", "color0": "#8f4441", "borderColor": None,
 							"borderColor0": None}}},
-						{"name": "Volume", "type": "bar", "xAxisIndex": 1, "yAxisIndex": 1, "data": self.data['volume_data']}]
+						{"name": "Volume", "type": "bar", "xAxisIndex": 1, "yAxisIndex": 1, "data": self.data['volume_data'],
+						 "itemStyle": {"normal": {"color": "#5c5c5c"}}}]
 			}
 
 		if self.title == '':

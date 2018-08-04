@@ -25,7 +25,7 @@ class Common:
 		files = glob('*.parquet')
 		dfl = []
 		for r in arrow.Arrow.range('month', self.range[0], self.range[1].ceil('month')):
-			if r.year < 2017:
+			if r.year < 2017 and False:
 				if r.month == 1:
 					f = 'bts_trades_{:04d}.parquet'.format(r.year)
 				else:
@@ -54,23 +54,24 @@ class Common:
 
 	def filter(self, pair='1.3.0:1.3.113', dust=[1,1]):
 		dff = self.dfo.loc[self.dfo.pair == pair]
-		#dff = dff.loc[(dff.quote_amount>dust[0]) & (dff.base_amount>dust[1])]
-		dff['volume'] = dff['quote_amount']
+		dff = dff.loc[(dff.pays_amount>dust[0]) & (dff.receives_amount>dust[1])]
+		dff['volume'] = dff['pays_amount']
 		# duplicate with the inverse market
 		tmp = pair.split(':')
 		pair_inv = tmp[1]+':'+tmp[0]
 		dff2 = self.dfo.loc[self.dfo.pair == pair_inv]
-		dff2['price'] = dff2['quote_amount'] / dff2['base_amount']
-		dff2['volume'] = dff2['base_amount']
+		dff2 = dff2.loc[(dff2.pays_amount>dust[0]) & (dff2.receives_amount>dust[1])]
+		dff2['price'] = dff2['pays_amount'] / dff2['receives_amount']
+		dff2['volume'] = dff2['receives_amount']
 		self.dff = pd.concat((dff, dff2))
-		print(self.dff.count())
+		print(self.dff.pair.count())
 		return self
 
 	def ohlc(self, timelapse='1h', fill=True):
 		if fill:
-			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'base_amount': 'sum'}).ffill()
+			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'receives_amount': 'sum'}).ffill()
 		else:
-			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'base_amount': 'sum'})
+			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'receives_amount': 'sum'})
 		self.df_ohlc = self.df_ohlc.dropna()
 		self.df_ohlc['time'] = self.df_ohlc.index
 		return self
@@ -170,9 +171,9 @@ class Analyze(Common):
 
 
 def test_stoch_rsi():
-	a = Analyze(range=(arrow.get('2018-07-05'), arrow.get('2018-07-06')))
+	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-06')))
 	a.filter()
-	ts = ['5min', '8min', '13min', '21min', '34min']
+	ts = ['5min', '8min', '13min', '21min', '34min'][:-1]
 	series = []
 	for tl in ts:
 		a.ohlc(timelapse=tl).stoch_rsi()
@@ -192,9 +193,9 @@ def test_stoch_rsi():
 
 def test_prophet():
 	from fbprophet import Prophet
-	a = Analyze(range=(arrow.get('2016-01-01'), arrow.get('2018-07-15')))
+	a = Analyze(range=(arrow.get('2018-07-01'), arrow.get('2018-08-15')))
 	a.filter()
-	df = a.ohlc(timelapse="8h").df_ohlc
+	df = a.ohlc(timelapse="1h").df_ohlc
 	df['ds'] = df.index
 	df['y'] = df.price.close
 	m = Prophet(weekly_seasonality=True)
@@ -202,7 +203,7 @@ def test_prophet():
 	m.add_seasonality(name='12h', period=12, fourier_order=5)
 	m.add_seasonality(name='1w', period=24*7, fourier_order=5)
 	m = m.fit(df)
-	future = m.make_future_dataframe(periods=360, freq='D')
+	future = m.make_future_dataframe(periods=30, freq='D')
 	fcst = m.predict(future)
 	#m.plot(fcst).savefig("froga3.svg", format='svg')
 	m.plot(fcst).savefig("froga6.png", format='png')
@@ -216,8 +217,8 @@ if __name__ == "__main__":
 	os.chdir('../data')
 	print("Starting")
 	print("ok1")
-	test_prophet()
-
+	#test_prophet()
+	test_stoch_rsi()
 	if False:
 		d = []
 		for i in (21,34,55,89,144,233):

@@ -79,7 +79,9 @@ def account_delete(data):
 	clear_cache()
 	return accounts
 
+
 def order_history(account_name):
+	#TODO: nodes keep a max history of 1000 trades
 	"""
 	{'id': '1.11.362687717',
 	'op': [4, {'fee': {'amount': 25921, 'asset_id': '1.3.113'},
@@ -96,5 +98,16 @@ def order_history(account_name):
 	#TODO:
 
 	from bitshares.account import Account
+	#TODO: ensure_full warrants full history?
 	Account(account_name).ensure_full()
 	movs = [x for x in Account(account_name).history(only_ops=['fill_order'])]
+	print(0)
+
+
+def trade_history(account_name):
+	from bitshares.account import Account
+	id = Account(account_name).identifier
+
+
+if __name__ == '__main__':
+	#order_history(account)
