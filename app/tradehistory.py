@@ -341,7 +341,7 @@ if __name__ == "__main__":
 	print("Starting")
 	#tmp_split()
 	setup()
-	setup(arrow.get('2016-08-01'), 7)
+	setup(arrow.get('2018-08-01'), 7)
 	start()
 	df = postProcess1()
 	postProcess2(df)
