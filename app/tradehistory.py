@@ -44,10 +44,9 @@ def read_trade_history():
 	data = None
 
 	#rq = 'http://185.208.208.184:5000/' + \
-	#rq = 'http://95.216.32.252:5010/' + \
 	#rq = 'https://eswrapper.bitshares.eu/' + \
 	rq = 'http://95.216.32.252:5000/' + \
-		 'get_account_history?operation_type=4&size=1000&' +\
+	'get_account_history?operation_type=4&size=1000&' +\
 			'from_date={}&to_date={}&'.format(*date_range) +\
 			'sort_by=-block_data.block_time&type=data&agg_field=operation_type'
 
@@ -268,22 +267,21 @@ def postProcess3():
 
 	print("postprocess 3")
 	print("date range:", df2.block_time.min(), df2.block_time.max())
-
-	df2['month'] = df2.block_time.dt.month
-	months = df2['month'].unique().tolist()
-	year = df2.block_time.min().year
-	for month in months:
-		file = glob('*{:04d}{:02d}.parquet'.format(year, month))
+	df2['date'] = df2.block_time.dt.date
+	dates = df2['date'].unique().tolist()
+	df2.drop(['date'], axis=1, inplace=True)
+	for dat in dates:
+		file = glob('*{:04d}{:02d}{:02d}.parquet'.format(dat.year, dat.month, dat.day))
 		if len(file) == 1:
 			file = file[0]
 			df3 = pd.read_parquet(file)
 		else:
 			df3 = None
-			file = 'bts_trades_{:04d}{:02d}.parquet'.format(year, month)
-		last = arrow.get(year, month, 1).isoformat()
-		next = arrow.get(year, month, 1).shift(months=1)
+			file = 'bts_trades_{:04d}{:02d}{:02d}.parquet'.format(dat.year, dat.month, dat.day)
+		last = arrow.get(dat.year, dat.month, dat.day).isoformat()
+		next = arrow.get(dat.year, dat.month, dat.day).shift(days=1)
 		df1 = df2.loc[(df2.block_time >= last) & (df2.block_time < next.isoformat())]
-		print("month:", month, "range:", last, next)
+		print("date:", dat, "range:", last, next)
 		if len(df1) > 0:
 			if df3 is not None:
 				print("concatenating")
@@ -300,6 +298,40 @@ def postProcess3():
 			os.remove(f)
 
 
+def tmp_split():
+	from glob import glob
+	files = glob('bts_trades_2018*.parquet')
+	for f in files:
+		if len(f) > 25:
+			continue
+		df = pd.read_parquet(f)
+		df['date'] = df.block_time.dt.date
+		dates = df['date'].unique().tolist()
+		df.drop(['date'], axis=1, inplace=True)
+		for dat in dates:
+			file = glob('*{:04d}{:02d}{:02d}.parquet'.format(dat.year, dat.month, dat.day))
+			if len(file) == 1:
+				file = file[0]
+				df3 = pd.read_parquet(file)
+			else:
+				df3 = None
+				file = 'bts_trades_{:04d}{:02d}{:02d}.parquet'.format(dat.year, dat.month, dat.day)
+			last = arrow.get(dat.year, dat.month, dat.day).isoformat()
+			next = arrow.get(dat.year, dat.month, dat.day).shift(days=1)
+			df1 = df.loc[(df.block_time >= last) & (df.block_time < next.isoformat())]
+			print("date:", dat, "range:", last, next)
+			if len(df1) > 0:
+				if df3 is not None:
+					print("concatenating")
+					df4 = pd.concat((df3,df1))
+					df4 = df4.drop_duplicates()
+					print("length", len(df4))
+					df4.to_parquet(file+".hot", 'fastparquet', 'GZIP')
+				else:
+					print("overwrite")
+					df1.to_parquet(file+".hot", 'fastparquet', 'GZIP')
+				os.rename(file+".hot", file)
+
 if __name__ == "__main__":
 	import sys
 	import os
@@ -307,8 +339,9 @@ if __name__ == "__main__":
 	if len(sys.argv) > 1:
 		print(sys.argv)
 	print("Starting")
+	#tmp_split()
 	setup()
-	#setup(arrow.get('2016-08-01'), 60)
+	setup(arrow.get('2016-08-01'), 7)
 	start()
 	df = postProcess1()
 	postProcess2(df)
