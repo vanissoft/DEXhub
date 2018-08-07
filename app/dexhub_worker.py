@@ -218,8 +218,8 @@ class Operations_listener():
 	async def ping(self):
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'data': 'pong'}))
 
-	async def rpc_ping(self):
-		blockchain.read_ticker('BTS/CNY')
+	async def rpc_ping(self, dummy):
+		return await blockchain.read_ticker('BTS/CNY')
 
 
 	async def do_ops(self, op):
