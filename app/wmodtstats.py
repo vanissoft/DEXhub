@@ -7,6 +7,7 @@
 
 from browser import window, document
 import w_mod_graphs
+from datetime import datetime
 
 jq = window.jQuery
 
@@ -16,21 +17,26 @@ Ws_comm = None
 
 Last = {}
 
-def get_info():
+def _get_info():
 	Ws_comm.send({'call': 'get_tradestats_token', 'module': Module_name, 'operation': 'enqueue'})
 	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
 	Ws_comm.send({'call': 'get_tradestats_account', 'module': Module_name, 'operation': 'enqueue'})
 	Ws_comm.send({'call': 'get_tradestats_accountpair', 'module': Module_name, 'operation': 'enqueue'})
+	Last['time'] = datetime.now()
 
 
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
-	if len(Last) == 0:
-		get_info()
+	if len(Last) == 0 or 'time' not in Last:
+		_get_info()
 	else:
-		Ws_comm.send({'call': 'letmeuselocalcache', 'module': Module_name, 'operation': 'enqueue'})
+		dif = datetime.now() - Last['time']
+		if dif.seconds > 5*60:
+			_get_info()
+		else:
+			incoming_data(Last)
 	jq('.nav-tabs a').on('shown.bs.tab', on_tabshown)
 
 
@@ -64,14 +70,10 @@ def datatable1_create(name='table1', cols, coldefs, dt_rows, precision=None):
 def incoming_data(data):
 	import json
 	global Last
-	if 'uselocalcache' in data:
-		if data['uselocalcache']:
-			data = Last
-		else:
-			get_info()
 
 	if 'stats_token' in data:
 		Last['stats_token'] = data['stats_token']
+		Last['time'] = datetime.now()
 		cols = ['Asset', 'Ops', 'Volume', 'Ops /day', 'Volume /day']
 		coldefs = [{"targets": 2, "render": _dt_format}, {"targets": 3, "render": _dt_format}, {"targets": 4, "render": _dt_format}]
 

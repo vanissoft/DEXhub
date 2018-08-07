@@ -25,7 +25,8 @@
             <div class="tabs-left">
                 <ul class="nav nav-tabs">
                     <li class="active"><a data-toggle="tab" href="#tab-1">Account settings</a></li>
-                    <li class=""><a data-toggle="tab" href="#tab-2">Misc settings</a></li>
+                    <li class=""><a data-toggle="tab" href="#tab-2">Preferences</a></li>
+                    <li class=""><a data-toggle="tab" href="#tab-3">Misc settings</a></li>
                 </ul>
                 <div class="tab-content ">
                     <div id="tab-1" class="tab-pane active">
@@ -51,6 +52,36 @@
                         </div>
                     </div>
                     <div id="tab-2" class="tab-pane">
+                        <div class="panel-body">
+                            <strong class="c-white">Bases priority</strong>
+                            <p>Preferences for pair composition. (Quote/Base)</p>
+                            <br>
+                            <div class="col-lg-6">
+                                <form>
+                                    <div class=form-group>
+                                        <label>Selects</label>
+                                    </div>
+                                        <select id="lTokens" class="form-control">
+                                            <option>Unable to load</option>
+                                        </select>
+                                </form>
+                            </div>
+                            <div class="col-lg-6">
+                                <div id="table2" class="table-responsive">
+                                </div>
+                                <br>
+                                <button id="bNewPair" class="btn btn-accent btn-sm">New Account</button>
+                                <br><br>
+                                <div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
+                                    <div class="form-group"><label for="iNamexxx">Bitshares account name</label> <input type="text" class="form-control" id="iNamexxx" placeholder="Name">
+                                        <p class="help-block">Must be a real account in Bitshares</p></div>
+                                    <button id="bSave2" class="btn btn-accent">Save</button>
+                                    <button id="bCancel2" class="btn btn-default">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-3" class="tab-pane">
                         <div class="panel-body">
                             <strong class="c-white">Connection settings</strong>
                             <p>wss://bitshares.openledger.info/ws</p>

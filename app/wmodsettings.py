@@ -61,6 +61,10 @@ def onResize():
 def incoming_data(data):
 	global Accounts
 	print('module', Module_name, "incoming_data")
+	opt=''
+	for x in range(0,10):
+		opt+="<option>token {}</option>".format(x)
+	document['lTokens'].innerHTML = opt
 	if 'reload' in data:
 		# don't reach here due to interception by wmodgeneral in wmain
 		print("reload!!!!!!")

@@ -6,8 +6,8 @@
 # TODO: ld-loading
 
 from browser import window, document
-import time
 import w_mod_graphs
+from datetime import datetime
 
 jq = window.jQuery
 
@@ -17,9 +17,13 @@ Account_active = 'All'
 Datatable_created = False
 Dt1 = None
 
-Last = None
+Last = {}
 
 Ws_comm = None
+
+def _get_info():
+	Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
+	Last['time'] = datetime.now()
 
 def init(comm):
 	global Ws_comm
@@ -27,10 +31,14 @@ def init(comm):
 	#jq('#panel1').toggleClass('ld-loading')
 	Ws_comm.send({'call': 'account_list', 'module': Module_name, 'operation': 'enqueue'})
 
-	if Last is None:
-		Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
+	if len(Last) == 0 or 'time' not in Last:
+		_get_info()
 	else:
-		Ws_comm.send({'call': 'letmeuselocalcache', 'module': Module_name, 'operation': 'enqueue'})
+		dif = datetime.now() - Last['time']
+		if dif.seconds > 5*60:
+			_get_info()
+		else:
+			incoming_data(Last)
 	#document["bRefresh"].bind('click', click_refresh)
 	jq('.nav-tabs a').on('shown.bs.tab', on_tabshown)
 
@@ -153,12 +161,9 @@ def account_margin(data, asset='USD'):
 
 def incoming_data(data):
 	global Last, Accounts
-	if 'uselocalcache' in data:
-		if data['uselocalcache']:
-			print("using cache!")
-			data = Last
-		else:
-			Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
+
+	Last.update(data)
+
 	if 'settings_account_list' in data:
 		Accounts = [x[0] for x in data['settings_account_list']]
 		Accounts.insert(0, "All")

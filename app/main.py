@@ -115,6 +115,7 @@ async def feeder():
 async def periodic():
 	while True:
 		try:
+			Redisdb.rpush('operations_bg', json.dumps({'call': 'rpc_ping', 'module': 'general'}))
 			print("launch ", 'subprocess.Popen("python tradehistory.py", shell=True)')
 			proc = subprocess.Popen("python tradehistory.py", shell=True)
 			while True:

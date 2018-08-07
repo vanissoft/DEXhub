@@ -44,7 +44,7 @@ class Account_data:
 		if len(cls.File_list) == 0:
 			return False
 		file = cls.File_list.pop(0)
-		df =  pq.read_table(file, nthreads=4).to_pandas()
+		df =  pq.read_table(file, nthreads=2).to_pandas()
 		cls.Dataframe = df
 		cls._extract()
 		print("process", file)
@@ -73,6 +73,7 @@ class Account_data:
 
 
 class Stats:
+	#TODO: mechanism for invalidate cache
 
 	def _load_last_data(self):
 		os.chdir('../data')

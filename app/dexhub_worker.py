@@ -133,8 +133,6 @@ class Operations_listener():
 			Ohlc_Analyser = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()))
 		a = Ohlc_Analyser
 		tmp = data['market'].split('/')
-		if 'CADASTRAL' in tmp:
-			print()
 		mkt = Assets_name[tmp[0]]+':'+Assets_name[tmp[1]]
 		a.filter(pair=mkt)
 		#a.filter()
@@ -219,6 +217,9 @@ class Operations_listener():
 
 	async def ping(self):
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'data': 'pong'}))
+
+	async def rpc_ping(self):
+		blockchain.read_ticker('BTS/CNY')
 
 
 	async def do_ops(self, op):

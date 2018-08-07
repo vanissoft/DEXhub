@@ -24,14 +24,14 @@ class Common:
 		from glob import glob
 		files = glob('*.parquet')
 		dfl = []
-		for r in arrow.Arrow.range('month', self.range[0], self.range[1].ceil('month')):
-			if r.year < 2017 and False:
-				if r.month == 1:
-					f = 'bts_trades_{:04d}.parquet'.format(r.year)
+		for r in arrow.Arrow.range('day', self.range[0], self.range[1].ceil('day')):
+			if r.year < 2018 and False:
+				if r.day == 1 and r.month == 1:
+					f = 'bts_trades_{:04d}{:02d}.parquet'.format(r.year, r.month)
 				else:
 					continue
 			else:
-				f = 'bts_trades_{:04d}{:02d}.parquet'.format(r.year, r.month)
+				f = 'bts_trades_{:04d}{:02d}{:02d}.parquet'.format(r.year, r.month, r.day)
 			d = pd.read_parquet(f, 'pyarrow')
 			dfl.append(d)
 		self.dfo = pd.concat(dfl)
