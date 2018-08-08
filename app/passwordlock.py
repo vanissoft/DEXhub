@@ -84,12 +84,15 @@ def check_mp(pwtxt):
 	mh = Redisdb.get('stored_password').decode('utf8')
 	print("check_mp hash:", hash)
 	print("check_mp stored_pass):", mh)
-	cipher = Fernet(hash)  # cipher with hash
-	tmp = cipher.decrypt(mh.encode('utf8')).decode('utf8')
-	if 'unlocked' in tmp:
-		if Redisdb.get('master_hash') is None:
-			Redisdb.setex('master_hash', 60 * 60, generate_mp(pwtxt, key=True)[1])
-		return True
+	try:
+		cipher = Fernet(hash)  # cipher with hash
+		tmp = cipher.decrypt(mh.encode('utf8')).decode('utf8')
+		if 'unlocked' in tmp:
+			if Redisdb.get('master_hash') is None:
+				Redisdb.setex('master_hash', 60 * 60, generate_mp(pwtxt, key=True)[1])
+			return True
+	except:
+		pass
 	return False
 
 def encrypt_data(data):

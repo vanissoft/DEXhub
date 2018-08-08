@@ -184,6 +184,29 @@ class Operations_listener():
 			settings = json.loads(rtn.decode('utf8'))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_misc': settings}))
 
+	async def settings_prefs_bases(self, param):
+		rtn = Redisdb.get("settings_prefs_bases")
+		if rtn is None:
+			settings = []
+		else:
+			settings = json.loads(rtn.decode('utf8'))
+		# most used tokens list
+		stats = market_data.Stats()
+
+		tlist = stats.stats_by_token[['asset_name']]['asset_name'][:20]
+		tlist = tlist.tolist()
+		if 'orderbyops' in param:
+			settings = tlist
+		else:
+			for t in tlist:
+				if t not in settings:
+					settings.append(t)
+		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_prefs_bases': settings}))
+
+	async def save_settings_bases(self, dat):
+		Redisdb.set("settings_prefs_bases", json.dumps(dat['data']))
+		Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Preferences saved.", 'error': False}))
+
 	async def order_delete(self, data):
 		# need account 
 		conn = privileged_connection(data['account'])

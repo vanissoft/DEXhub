@@ -197,12 +197,11 @@ def postProcess1(from_idx=0, to_idx=0):
 def postProcess2(df):
 	import pickle
 	from bitshares.asset import Asset
-	assets = {}
 	try:
 		with open('assets.pickle', 'rb') as h:
 			assets = pickle.load(h)
 	except:
-		pass
+		assets = {}
 
 	s1 = set(df.pays_asset.value_counts().index.tolist())
 	s2 = set(df.receives_asset.value_counts().index.tolist())
