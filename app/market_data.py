@@ -9,7 +9,10 @@
 import pandas as pd
 import numpy as np
 import os
+import json
 import pyarrow.parquet as pq
+import arrow
+from config import *
 
 Cache = None
 
@@ -27,29 +30,44 @@ class Account_data:
 		df = None
 		for acc in cls.Accounts_id.keys():
 			df2 = cls.Dataframe.loc[(cls.Dataframe.account_id == acc)]
-			if df is not None:
+			if len(df2) == 0:
+				continue
+			if df is not None and len(df2)>0:
 				df = pd.concat([df, df2])
 			else:
 				df = df2
+		if df is None:
+			return
 		#df.reset_index(inplace=True)
-
+		print(df.block_time.min())
 		if cls.Dataframe2 is None:
 			cls.Dataframe2 = df
 		else:
-			cls.Dataframe2 = pd.concat([cls.Dataframe2, df])
+			df = pd.concat([cls.Dataframe2, df])
+			cls.Dataframe2 = df.drop_duplicates()
 		print(len(cls.Dataframe2))
 
 	@classmethod
 	def _next_file(cls):
-		if len(cls.File_list) == 0:
-			return False
-		file = cls.File_list.pop(0)
-		df =  pq.read_table(file, nthreads=2).to_pandas()
-		cls.Dataframe = df
+		dr = [cls.DateRange[n].isoformat().replace('-','')[:8] for n in range(0,2)]
+		while True:
+			if len(cls.File_list) == 0:
+				return False
+			file = cls.File_list.pop(0)
+			dt = file.split('_')[2].split('.')[0]
+			if dt >= dr[1]:
+				break
+			if dt < dr[0]:
+				break
+			print("drop", file)
+		cls.Dataframe = pd.read_parquet(file)
 		cls._extract()
 		print("process", file)
 		return True
 
+	@classmethod
+	def _save(cls):
+		cls.Dataframe2.to_parquet('bts_account_movs.parquet', 'fastparquet', 'GZIP')
 
 	def __init__(self, accounts):
 		from bitshares.account import Account
@@ -68,7 +86,23 @@ class Account_data:
 			tmp = pickle.load(h)
 		cls.Assets_id = {k: v for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
 		cls.Assets_name = {v: k for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
-
+		# last data
+		last = 'bts_account_movs.parquet'
+		cls.DateRange = [arrow.utcnow(), arrow.utcnow()]
+		if len(glob(last)) > 0:
+			df = pd.read_parquet(last)
+			dr = [arrow.utcnow().shift(years=-10), arrow.utcnow().shift(years=10)]
+			for acc in accounts:
+				df2 = df.loc[(df.account_id == cls.Accounts_name[acc])]
+				if len(df2) == 0:
+					dr[0] = max(dr[0], arrow.utcnow())
+					dr[1] = min(dr[1], arrow.utcnow())
+				else:
+					dr[0] = max(dr[0], arrow.get(df.block_time.min()))
+					dr[1] = min(dr[1], arrow.get(df.block_time.max()))
+			cls.DateRange = dr
+			cls.Dataframe2 = df
+			print('daterange', dr)
 
 
 
@@ -123,9 +157,33 @@ class Stats:
 
 			self.stats_by_token = d3
 
-			self.stats_by_pair = df.groupby('pair').agg({'pays_amount': 'sum', 'receives_amount': 'sum', 'price': 'mean', 'pair': 'count'}).sort_values('pair', ascending=False)
-			self.stats_by_pair['pair_id'] = self.stats_by_pair.index
-			self.stats_by_pair['pair_text'] = self.stats_by_pair['pair_id'].apply(lambda x: self.Assets_id[x.split(':')[0]] + "/" + self.Assets_id[x.split(':')[1]])
+			d1 = df.groupby('pair').agg({'pays_amount': 'sum', 'receives_amount': 'sum', 'price': 'mean', 'pair': 'count'}).sort_values('pair', ascending=False)
+			d1['pair_id'] = d1.index
+			d1['pair_text'] = d1['pair_id'].apply(lambda x: self.Assets_id[x.split(':')[0]] + "/" + self.Assets_id[x.split(':')[1]])
+
+			rtn = Redisdb.get("settings_prefs_bases")
+			if rtn is None:
+				prefs = []
+			else:
+				prefs = json.loads(rtn.decode('utf8'))
+			pairs = d1.pair_text.tolist()
+
+			d1['invert'] = d1.pair_text.apply(lambda x: 1 if (prefs.index(x.split('/')[0]) if x.split('/')[0] in prefs else 999) < (prefs.index(x.split('/')[1]) if x.split('/')[1] in prefs else 998) else 0)
+
+			d2 = d1.loc[(d1.invert==1)]
+			d2[['pays_amount', 'receives_amount']] = d2[['receives_amount', 'pays_amount']]
+			d2[['price']] = 1/d2[['price']]
+			d2.pair_id = d2.pair_id.apply(lambda x: x.split(':')[1]+":"+x.split(':')[0])
+			d2.pair_text = d2.pair_text.apply(lambda x: x.split('/')[1]+"/"+x.split('/')[0])
+			d2.index = d2.pair_id
+
+			d3 = pd.concat([d2, d1.loc[(d1.invert==0)]])
+
+			d1 = d3.groupby('pair_id').agg({'pays_amount': 'sum', 'receives_amount': 'sum', 'price': 'mean', 'pair': 'sum'}).sort_values('pair', ascending=False)
+			d1['pair_id'] = d1.index
+			d1['pair_text'] = d1['pair_id'].apply(lambda x: self.Assets_id[x.split(':')[0]] + "/" + self.Assets_id[x.split(':')[1]])
+			self.stats_by_pair = d1
+
 
 			self.stats_by_account = df.groupby('account_id').agg({'pair': 'count'}).sort_values('pair', ascending=False)
 			self.stats_by_account['account_id'] = self.stats_by_account.index
@@ -142,8 +200,13 @@ class Stats:
 
 if __name__ == "__main__":
 	import os
+	#stats = Stats()
 	print("Starting")
-	#d = Account_data([account, account2])
-	#while d._next_file() is True:
-	#	pass
+	d = Account_data(['tximiss0', 'eliserio0'])
+	num = 0
+	while d._next_file() is True:
+		num += 1
+		if num > 5:
+			num = 0
+			d._save()
 	print('end')

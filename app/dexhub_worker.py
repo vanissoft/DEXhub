@@ -278,8 +278,11 @@ class Operations_listener():
 				if op is None:
 					await asyncio.sleep(.01)
 					continue
+			status = {'operations': [x.decode('utf8') for x in Redisdb.lrange('operations', 0, 999)],
+						'operations_bg': [x.decode('utf8') for x in Redisdb.lrange('operations_bg', 0, 999)]}
+			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'status': status}))
 			await self.do_ops(op)
-
+			# send info of queues
 
 
 

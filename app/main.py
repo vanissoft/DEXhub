@@ -78,7 +78,7 @@ async def wscomms(request, ws):
 					if dat['operation'] == 'module_activation':
 						#TODO: sometimes need to be a saving
 						#Redisdb.bgsave()
-						Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
+						#Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 						Redisdb.set('Active_module', dat['module'])
 						Active_module = dat['module']
 
@@ -132,7 +132,7 @@ async def periodic():
 
 if __name__ == '__main__':
 	# Develop switch between queue and direct work. True for be able to put Breakpoints
-	Develop = ('Z68X' in socket.getfqdn()) and True
+	Develop = ('Z68x' in socket.getfqdn()) and True
 	proc1 = subprocess.Popen("redis-server --port "+str(REDIS_PORT), shell=True)
 	while True:
 		try:
@@ -149,6 +149,7 @@ if __name__ == '__main__':
 	proc2 = []
 	if not Develop:
 		for w in range(0, WORKERS):
+			print("*starting worker", w)
 			proc2.append(subprocess.Popen("python3 dexhub_worker.py", shell=True))
 
 

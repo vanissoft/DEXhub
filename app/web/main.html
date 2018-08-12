@@ -32,6 +32,7 @@ ${head.html}
                     <input type="text" class="form-control" placeholder="Placeholder" style="width: 175px">
                 </form>
                 <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown"><button id="bShowStatus" type="button" class="btn btn-default">Status</button></li>
 
                     <li class="dropdown">
                         <a role="button" id="link_master_password" data-toggle="modal" data-target="#modal_master_password"> Unlock
@@ -77,10 +78,43 @@ ${head.html}
             </div>
         </div>
         <div class="container-fluid" id="page_container">
-
         </div>
     </section>
     <!-- End main content-->
+
+                        <div class="modal-example">
+
+                            <style>
+                                    .modal-example .modal { position: absolute; top: auto; right: 1%; bottom: 1%; left: auto; z-index: 1; display: block; }
+                                </style>
+
+                            <div class="modal hidden" id="infopanel1" tabindex="-1" role="dialog">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-body">
+                                            <h4 class="m-t-none">Message Panel</h4>
+                                            <p>Activity's queue</p>
+                                            <table  class="table m-t-md">
+                                                <thead>
+                                                <tr>
+                                                    <th>Queue</th>
+                                                    <th>Activity</th>
+                                                </tr>
+                                                </thead>
+                                                <tbody id="status_rows">
+                                                <tr>
+                                                    <td>Main</td>
+                                                    <td>Loading data....</td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                </div>
 
 </div>
 <!-- End wrapper-->

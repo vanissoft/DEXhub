@@ -49,7 +49,10 @@ def on_tabshown(ev):
 	print("ev.target", ev.target.hash)
 
 def _dt_format(data, type, row, meta):
-	tmpl = '{0:,.0f}'
+	if meta.col == 4:
+		tmpl = '{0:,.8f}'
+	else:
+		tmpl = '{0:,.0f}'
 	return tmpl.format(data)
 
 

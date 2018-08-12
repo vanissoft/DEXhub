@@ -113,7 +113,6 @@ def html_loaded(url, rtn):
 		Ws_comm.send("change from client")
 		Ws_comm.send({'operation': 'module_activation', 'module': Active_module.Module_name})
 		print("activate", Active_module.Module_name)
-		#TODO: dump module data queues
 		if Active_module in Incoming_data:
 			while len(Incoming_data[Active_module])> 0:
 				Active_module.incoming_data(Incoming_data[Active_module].pop())
@@ -166,6 +165,10 @@ def master_unlock(ev):
 	#document['MPerror'].innerHTML = "Password doesn't match?<br>Not implemented"
 	Ws_comm.send({'call': 'master_unlock', 'data': document["iMPpasshrase"].value, 'module': "general", 'operation': 'enqueue'})
 
+
+def show_status(ev):
+	jq('#infopanel1').toggleClass('hidden')
+
 # bind menu links
 for bind in Menu_binds.items():
 	try:
@@ -174,5 +177,6 @@ for bind in Menu_binds.items():
 		print(err)
 
 document["bMPunlock"].bind('click', master_unlock)
+document["bShowStatus"].bind('click', show_status)
 
 window.toastr.info('Welcome to DEX HUB<br>A Bitshares portfolio manager.', None, {"debug": 0, "newestOnTop": 1, "positionClass": "toast-top-center", "closeButton": 1, "progressBar": True})
