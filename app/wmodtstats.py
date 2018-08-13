@@ -48,12 +48,11 @@ def click_asset_detail(ev):
 def on_tabshown(ev):
 	print("ev.target", ev.target.hash)
 
-def _dt_format(data, type, row, meta):
-	if meta.col == 4:
-		tmpl = '{0:,.8f}'
-	else:
-		tmpl = '{0:,.0f}'
-	return tmpl.format(data)
+def _dt_0f(data, type, row, meta):
+	return '{0:,.0f}'.format(data)
+
+def _dt_8f(data, type, row, meta):
+	return '{0:,.8f}'.format(data)
 
 
 def datatable1_create(name='table1', cols, coldefs, dt_rows, precision=None):
@@ -78,22 +77,21 @@ def incoming_data(data):
 		Last['stats_token'] = data['stats_token']
 		Last['time'] = datetime.now()
 		cols = ['Asset', 'Ops', 'Volume', 'Ops /day', 'Volume /day']
-		coldefs = [{"targets": 2, "render": _dt_format}, {"targets": 3, "render": _dt_format}, {"targets": 4, "render": _dt_format}]
-
+		coldefs = [{"targets": 2, "render": _dt_0f}, {"targets": 3, "render": _dt_0f}, {"targets": 4, "render": _dt_0f}]
 		datatable1_create('table1', cols, coldefs, json.loads(data['stats_token']))
 	if 'stats_pair' in data:
 		Last['stats_pair'] = data['stats_pair']
 		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
-		coldefs = [{"targets": 1, "render": _dt_format}, {"targets": 2, "render": _dt_format}, {"targets": 3, "render": _dt_format},
-					   {"targets": 4, "render": _dt_format}]
+		coldefs = [{"targets": 1, "render": _dt_0f}, {"targets": 2, "render": _dt_0f}, {"targets": 3, "render": _dt_0f},
+					   {"targets": 4, "render": _dt_8f}]
 		datatable1_create('table2', cols, coldefs, json.loads(data['stats_pair']))
 	if 'stats_account' in data:
 		Last['stats_account'] = data['stats_account']
 		cols = ['Account_id', 'Ops']
-		coldefs = [{"targets": 1, "render": _dt_format}]
+		coldefs = [{"targets": 1, "render": _dt_0f}]
 		datatable1_create('table3', cols, coldefs, json.loads(data['stats_account']))
 	if 'stats_accountpair' in data:
 		Last['stats_accountpair'] = data['stats_accountpair']
 		cols = ['Account_id', 'Pair', 'Ops']
-		coldefs = [{"targets": 2, "render": _dt_format}]
+		coldefs = [{"targets": 2, "render": _dt_0f}]
 		datatable1_create('table4', cols, coldefs, json.loads(data['stats_accountpair']))

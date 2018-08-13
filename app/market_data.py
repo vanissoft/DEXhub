@@ -17,6 +17,20 @@ from config import *
 Cache = None
 
 class Account_data:
+	"""
+	Trades done by accounts.
+	Reads historic data harvested by tradehistory.py
+
+	Example:
+	To obtain all trades from accounts:
+		d = Account_data(['account1', 'account2', ...])
+		num = 0
+		while d._next_file() is True:
+			num += 1
+			if num % 5 == 0:
+				d._save()
+
+	"""
 	Dataframe = None
 	Dataframe2 = None
 	Accounts_id = {}
@@ -202,7 +216,7 @@ if __name__ == "__main__":
 	import os
 	#stats = Stats()
 	print("Starting")
-	d = Account_data(['tximiss0', 'eliserio0'])
+	d = Account_data(['cjh.ant', 'gato01'])
 	num = 0
 	while d._next_file() is True:
 		num += 1
