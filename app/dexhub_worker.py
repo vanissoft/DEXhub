@@ -251,7 +251,6 @@ class Operations_listener():
 		:param op:
 		:return:
 		"""
-		# TODO: as this module is a worker it is a must getting global settings
 		global Active_module
 		Active_module = Redisdb.get('Active_module').decode('utf8')
 
@@ -278,9 +277,13 @@ class Operations_listener():
 				if op is None:
 					await asyncio.sleep(.01)
 					continue
+
+			# show queue debug in client
 			status = {'operations': [x.decode('utf8') for x in Redisdb.lrange('operations', 0, 999)],
 						'operations_bg': [x.decode('utf8') for x in Redisdb.lrange('operations_bg', 0, 999)]}
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'status': status}))
+			# -------------
+
 			await self.do_ops(op)
 			# send info of queues
 
@@ -289,16 +292,12 @@ class Operations_listener():
 
 if __name__ == "__main__":
 	import sys
-	# init is necesary the first run for load the assets
-	if Redisdb.hget("asset1:BTS", 'symbol') is None:
-		init()
-	else:
-		init()
+	init()
 	if len(sys.argv) > 1:
-		if 'init' in sys.argv[1]:
-			init()
-		elif 'blockchain_listener' in sys.argv[1]:
-			blockchain_listener()
+		if 'blockchain_listener' in sys.argv[1]:
+			# TODO: realtime listener?
+			#blockchain_listener()
+			pass
 		elif 'operations_listener' in sys.argv[1]:
 			Operations_listener()
 	else:

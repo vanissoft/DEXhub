@@ -122,6 +122,7 @@ async def periodic():
 				await sleep(5)
 				if proc.poll() is not None:
 					print("subprocess terminated")
+					#TODO: signal market_data
 					break
 		except Exception as err:
 			print(err.__repr__())

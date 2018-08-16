@@ -423,7 +423,7 @@ async def open_positions():
 						   base_asset[1], quote_asset[1], lo['id']])
 
 	# Open positions are part of balance
-	if Redisdb.get("balances_openpos") is None:
+	if Redisdb.get("balances_openpos") is None or True:
 		opos2 = {}
 		for acc in ob:
 			opos2[acc] = {}

@@ -77,7 +77,7 @@ def incoming_data(data):
 		Last['stats_token'] = data['stats_token']
 		Last['time'] = datetime.now()
 		cols = ['Asset', 'Ops', 'Volume', 'Ops /day', 'Volume /day']
-		coldefs = [{"targets": 2, "render": _dt_0f}, {"targets": 3, "render": _dt_0f}, {"targets": 4, "render": _dt_0f}]
+		coldefs = [{"targets": 1, "render": _dt_0f}, {"targets": 2, "render": _dt_0f}, {"targets": 3, "render": _dt_0f}, {"targets": 4, "render": _dt_0f}]
 		datatable1_create('table1', cols, coldefs, json.loads(data['stats_token']))
 	if 'stats_pair' in data:
 		Last['stats_pair'] = data['stats_pair']
