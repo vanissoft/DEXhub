@@ -280,7 +280,7 @@ class Account_data:
 			cls.Dataframe = df
 			print('daterange', dr)
 
-		dr[0] = arrow.utcnow().shift(days=-5)
+		dr[0] = arrow.utcnow().shift(days=-15)
 		dr[1] = arrow.utcnow()
 		MDF.request({'name': 'account', 'type': 'account_trades', 'callback': cls.data_received,
 									  'accounts': cls.Accounts_id.keys(), 'daterange': dr})

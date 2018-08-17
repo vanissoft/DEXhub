@@ -138,16 +138,14 @@ def trade_history(accounts, mdf=None, module=''):
 		d2.pair_text = d2.pair_text.apply(lambda x: x.split('/')[1]+"/"+x.split('/')[0])
 		d2.index = d2.pair_id
 
-		d3 = pd.concat([d2, d1.loc[(d1.invert==0)]])
-		d3.sort_values('block_time', inplace=True)
-		# block_time convert: arrow.get(int(a[0][0]/1000))
-		d3['time'] = d3.block_time.apply(lambda x: arrow.get(x))
-		d3['account'] = d3.account_id.apply(lambda x: Accounts[x])
-		tmp = d3[['time', 'account', 'invert', 'pair_text', 'price', 'pays_amount', 'receives_amount']].to_dict()
-		resp = [z for z in zip([x[1].isoformat() for x in tmp['time'].items()], [x[1] for x in tmp['account'].items()],
-							   [x[1] for x in tmp['invert'].items()], [x[1] for x in tmp['pair_text'].items()],
-							   [x[1] for x in tmp['price'].items()], [x[1] for x in tmp['pays_amount'].items()],
-							   [x[1] for x in tmp['receives_amount'].items()])]
+		d3 = d1.loc[(d1.invert==0)]
+		d4 = pd.concat([d2, d3])
+		d4.sort_values('block_time', ascending=False, inplace=True)
+		d4['time'] = d4.block_time.apply(lambda x: arrow.get(x).isoformat()[:-6])
+		d4['account'] = d4.account_id.apply(lambda x: Accounts[x])
+		d4['type'] = d4.invert.apply(lambda x: 'SELL' if x==0 else 'BUY')
+		resp = [z for z in zip(d4.time.tolist(), d4.account.tolist(), d4.type.tolist(), d4.pair_text.tolist(),
+							   d4.price.tolist(), d4.pays_amount.tolist(), d4.receives_amount.tolist())]
 		Redisdb.rpush("datafeed", json.dumps({'module': module, 'data': json.dumps(resp)}))
 
 	rtn = Redisdb.get("settings_accounts")

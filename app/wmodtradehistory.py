@@ -14,6 +14,7 @@ jq = window.jQuery
 Module_name = "tradehistory"
 Accounts = []
 Account_active = 'All'
+DataTables = {}
 
 Last = {}
 
@@ -93,9 +94,14 @@ def _dt_8f(data, type, row, meta):
 
 
 def datatable1_create(name='table1', cols, coldefs, dt_rows, precision=None):
+	global DataTables
+
+	if name in DataTables and DataTables[name] is not None:
+		DataTables[name].clear()
+		DataTables[name].destroy()
 
 	# TODO: numeric alignment to the right doesn't work?
-	jq('#'+name).DataTable({"data": dt_rows, "columns": [{'title': v} for v in cols],
+	DataTables[name] = jq('#'+name).DataTable({"data": dt_rows, "columns": [{'title': v} for v in cols],
 							 "columnDefs": coldefs,
 							 "order": [[1, "desc"]],
 							 "dom": "<'row'<'col-sm-4'l><'col-sm-4 text-center'B><'col-sm-4'f>>tp",
@@ -112,7 +118,6 @@ def incoming_data(data):
 	import json
 	Last.update(data)
 
-	print(data.keys())
 	if 'settings_account_list' in data:
 		Accounts = [x[0] for x in data['settings_account_list']]
 		Accounts.insert(0, "All")
@@ -125,6 +130,18 @@ def incoming_data(data):
 		document['lAcc2'].innerHTML = lacc
 		document['lAcc3'].innerHTML = lacc
 
-		cols = ['Time', 'Account', 'invert', 'Pair', 'Price', 'Pays amount', 'Receives amount']
-		coldefs = [{"targets": 4, "render": _dt_8f}, {"targets": 5, "render": _dt_0f}, {"targets": 6, "render": _dt_0f}]
-		datatable1_create('table1', cols, coldefs, json.loads(data['data']))
+		movs = json.loads(data['data'])
+		if Account_active != 'All':
+			movs = [x for x in movs if x[1]==Account_active]
+
+		cols = ['Time', 'Account', 'Type', 'Pair', 'Price', 'Pays amount', 'Receives amount']
+		coldefs = [{"targets": 4, "render": _dt_8f}, {"targets": [5, 6], "render": _dt_0f}, {"targets": 1, "visible": False, "searchable": False}]
+		datatable1_create('table1', cols, coldefs, movs)
+
+		cols = ['Time', 'Account', 'Type', 'Pair', 'Price', 'Pays amount', 'Receives amount']
+		coldefs = [{"targets": 4, "render": _dt_8f}, {"targets": [5, 6], "render": _dt_0f}, {"targets": 1, "visible": False, "searchable": False}]
+		datatable1_create('table2', cols, coldefs, [x for x in movs if x[2]=='BUY'])
+
+		cols = ['Time', 'Account', 'Type', 'Pair', 'Price', 'Pays amount', 'Receives amount']
+		coldefs = [{"targets": 4, "render": _dt_8f}, {"targets": [5, 6], "render": _dt_0f}, {"targets": 1, "visible": False, "searchable": False}]
+		datatable1_create('table3', cols, coldefs, [x for x in movs if x[2]=='SELL'])
