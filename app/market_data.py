@@ -97,6 +97,7 @@ class MarketDataFeeder:
 	def step(cls):
 		if len(cls.Files_to_process) > 0:
 			cls.readfile(cls.Files_to_process.pop(0))
+			Redisdb.rpush('operations_bg', json.dumps({'call': 'marketdatafeeder_step', 'module': 'general'}))
 			return True
 		return False
 
@@ -139,7 +140,6 @@ class MarketDataFeeder:
 		elif data['type'] == 'pair':
 			pass
 
-
 		cls._reqlastdata()  # refresh more recent data
 		cls._files_range(reqr, excl_list)
 
@@ -175,16 +175,19 @@ class MarketDataFeeder:
 	def resprequesters(cls):
 		for req in cls.Requests_account.items():
 			for acc in req[1]['accounts']:
+				if cls.Datastores_account[acc]['range'][0] is None:
+					dts_range = [arrow.get('20000101'), arrow.get('20000101')]
+				else:
+					dts_range = cls.Datastores_account[acc]['range']
 				if (len(cls.Files_to_process) == 0) or \
 					(len(cls.Parquet_files) == len(cls.Datastores_account[acc])) or \
-					(cls.Datastores_account[acc]['range'][0] <= req[1]['daterange'][0] and \
-					cls.Datastores_account[acc]['range'][1] >= req[1]['daterange'][1]):
-					req[1]['callback'](cls.Datastores_account[acc]['df'])
-
-					#persistence
-					df_file = 'datastores_account_{}'.format(acc)
-					cls.Datastores_account[acc]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
-					Redisdb.set(df_file, json.dumps({'files': cls.Datastores_account[acc]['files']}))
+					(dts_range[0] <= req[1]['daterange'][0] and dts_range[1] >= req[1]['daterange'][1]):
+					if cls.Datastores_account[acc]['df'] is not None:
+						req[1]['callback'](cls.Datastores_account[acc]['df'])
+						#persistence
+						df_file = 'datastores_account_{}'.format(acc)
+						cls.Datastores_account[acc]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
+						Redisdb.set(df_file, json.dumps({'files': cls.Datastores_account[acc]['files']}))
 
 	@classmethod
 	def readfile(cls, file):
@@ -240,24 +243,26 @@ class Account_data:
 
 
 	@classmethod
-	def newdata(cls, df):
+	def data_received(cls, df):
 		print("data received")
 		print(df.block_time.min(), df.block_time.max())
+		if cls.Callback is not None:
+			cls.Callback(df)
 
 
 	@classmethod
 	def _save(cls):
 		cls.Dataframe.to_parquet('bts_account_movs.parquet', 'fastparquet', 'GZIP')
 
-	def __init__(self, accounts):
+	def __init__(self, accounts, MDF, callback):
 		cls = self.__class__
 		from bitshares.account import Account
-		cls.MarketDataFeeder = MarketDataFeeder()
 		for acc in accounts:
 			id = Account(acc).identifier
 			cls.Accounts_id[id] = acc
 			cls.Accounts_name[acc] = id
 		cls.Dataframe = None
+		cls.Callback = callback
 		# last data
 		last = 'bts_account_movs.parquet'
 		cls.DateRange = [arrow.utcnow(), arrow.utcnow()]
@@ -277,9 +282,9 @@ class Account_data:
 
 		dr[0] = arrow.utcnow().shift(days=-5)
 		dr[1] = arrow.utcnow()
-		cls.MarketDataFeeder.request({'name': 'account', 'type': 'account_trades', 'callback': cls.newdata,
+		MDF.request({'name': 'account', 'type': 'account_trades', 'callback': cls.data_received,
 									  'accounts': cls.Accounts_id.keys(), 'daterange': dr})
-
+		print("request account_trades", dr)
 
 
 

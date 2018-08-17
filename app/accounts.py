@@ -12,8 +12,10 @@
 
 from config import *
 import json
+import arrow
+import pandas as pd
 import passwordlock
-
+import market_data
 
 
 def clear_cache():
@@ -80,7 +82,8 @@ def account_delete(data):
 	return accounts
 
 
-def order_history(account_name):
+#TODO: to delete
+def order_history_old(account_name):
 	#TODO: nodes keep a max history of 1000 trades
 	"""
 	{'id': '1.11.362687717',
@@ -104,10 +107,57 @@ def order_history(account_name):
 	print(0)
 
 
-def trade_history(account_name):
-	from bitshares.account import Account
-	id = Account(account_name).identifier
+def trade_history(accounts, mdf=None, module=''):
+	if mdf is None:
+		return False
 
+	Accounts = []
+	def data_available(df):
+		import pickle
+		with open('assets.pickle', 'rb') as h:
+			tmp = pickle.load(h)
+		Assets_id = {k: v for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
+		Assets_name = {v: k for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
+
+		d1 = df
+		d1['pair_id'] = d1.pair
+		d1['pair_text'] = d1['pair_id'].apply(lambda x: Assets_id[x.split(':')[0]] + "/" + Assets_id[x.split(':')[1]])
+
+		rtn = Redisdb.get("settings_prefs_bases")
+		if rtn is None:
+			prefs = []
+		else:
+			prefs = json.loads(rtn.decode('utf8'))
+
+		d1['invert'] = d1.pair_text.apply(lambda x: 1 if (prefs.index(x.split('/')[0]) if x.split('/')[0] in prefs else 999) < (prefs.index(x.split('/')[1]) if x.split('/')[1] in prefs else 998) else 0)
+
+		d2 = d1.loc[(d1.invert==1)]
+		d2[['pays_amount', 'receives_amount']] = d2[['receives_amount', 'pays_amount']]
+		d2[['price']] = 1/d2[['price']]
+		d2.pair_id = d2.pair_id.apply(lambda x: x.split(':')[1]+":"+x.split(':')[0])
+		d2.pair_text = d2.pair_text.apply(lambda x: x.split('/')[1]+"/"+x.split('/')[0])
+		d2.index = d2.pair_id
+
+		d3 = pd.concat([d2, d1.loc[(d1.invert==0)]])
+		d3.sort_values('block_time', inplace=True)
+		# block_time convert: arrow.get(int(a[0][0]/1000))
+		d3['time'] = d3.block_time.apply(lambda x: arrow.get(x))
+		d3['account'] = d3.account_id.apply(lambda x: Accounts[x])
+		tmp = d3[['time', 'account', 'invert', 'pair_text', 'price', 'pays_amount', 'receives_amount']].to_dict()
+		resp = [z for z in zip([x[1].isoformat() for x in tmp['time'].items()], [x[1] for x in tmp['account'].items()],
+							   [x[1] for x in tmp['invert'].items()], [x[1] for x in tmp['pair_text'].items()],
+							   [x[1] for x in tmp['price'].items()], [x[1] for x in tmp['pays_amount'].items()],
+							   [x[1] for x in tmp['receives_amount'].items()])]
+		Redisdb.rpush("datafeed", json.dumps({'module': module, 'data': json.dumps(resp)}))
+
+	rtn = Redisdb.get("settings_accounts")
+	if rtn is None:
+		return False
+	else:
+		tmp = json.loads(rtn.decode('utf8'))
+		Accounts = {v[3]:v[0] for v in tmp}
+	market_data.Account_data(accounts, mdf, data_available)
+	Redisdb.rpush('operations_bg', json.dumps({'call': 'marketdatafeeder_step', 'module': 'general'}))
 
 if __name__ == '__main__':
 	#order_history(account)

@@ -112,6 +112,7 @@ import blockchain
 
 WBTS = None
 
+#TODO: sustitute by static assets.json
 def load_assets():
 	"""
 	Load all the Bitshares assets.
@@ -290,7 +291,7 @@ async def get_balances():
 	margin_lock_BTS = {}
 	margin_lock_USD = {}
 	bal3 = Redisdb.get("balances_callorders")
-	if bal3 is not None or True:
+	if bal3 is not None:
 		bal3 = json.loads(bal3.decode('utf8'))
 		for b in bal3:
 			tick = await read_ticker(b[1]+"/BTS")

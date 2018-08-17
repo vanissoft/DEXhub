@@ -82,7 +82,7 @@ def read_trade_history():
 
 
 
-def setup(dfrom=None, days=0):
+def setup(dfrom=None, days=0, hours=1):
 	import subprocess, time
 	proc1 = subprocess.Popen("redis-server --port 6383", shell=True)
 	while True:
@@ -108,7 +108,7 @@ def setup(dfrom=None, days=0):
 		last = None
 
 
-	hours = 2
+	hours = 1
 	if dfrom is None:
 		tto = arrow.utcnow().datetime.replace(tzinfo=None)
 	else:

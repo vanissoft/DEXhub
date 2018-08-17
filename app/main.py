@@ -126,7 +126,7 @@ async def periodic():
 					break
 		except Exception as err:
 			print(err.__repr__())
-		await sleep(60*10)
+		await sleep(60*5)
 
 
 

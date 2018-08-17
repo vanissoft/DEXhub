@@ -27,7 +27,7 @@ Active_module = None
 Assets_id = {}
 Assets_name = {}
 Ohlc_Analyser = None
-
+MDF = None
 
 def init():
 	"""
@@ -36,7 +36,7 @@ def init():
 	:return:
 	"""
 	import os
-	global Assets_id, Assets_name
+	global Assets_id, Assets_name, MDF
 	os.chdir('../data')
 	with open('assets.pickle', 'rb') as h:
 		tmp = pickle.load(h)
@@ -44,7 +44,9 @@ def init():
 	Assets_name = {v:k for (k,v) in [(k,v[0]) for (k,v) in tmp.items()]}
 	#TODO: is this need?
 	#blockchain.init()
-	Redisdb.bgsave()
+	#Redisdb.bgsave()
+
+	MDF = market_data.MarketDataFeeder()
 	print("end")
 
 
@@ -243,6 +245,12 @@ class Operations_listener():
 
 	async def rpc_ping(self, dummy):
 		return await blockchain.read_ticker('BTS/CNY')
+
+	async def account_tradehistory(self, dat):
+		accounts.trade_history([x[0] for x in accounts.account_list()], MDF, dat['module'])
+
+	async def marketdatafeeder_step(self, dummy):
+		MDF.step()
 
 
 	async def do_ops(self, op):
