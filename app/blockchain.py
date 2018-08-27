@@ -197,23 +197,22 @@ def blockchain_listener():
 		Redisdb.rpush("bitshares_op", pickle.dumps(block))
 
 
-async def read_ticker(market):
-	# TODO: make lazy execution
+async def read_ticker(market, force=False):
 	rtn = Redisdb.get("ticker_"+market)
-	if rtn is not None:
+	if rtn is not None and not force:
 		return json.loads(rtn.decode('utf8'))
 	pair = market.split("/")
-	# BTS/USD get ticker of BTS with prices in USD
-	if pair[0] != pair[1]:
-		rtn = Bitshares.rpc.get_ticker(pair[1], pair[0])
-		mid_price = (float(rtn['lowest_ask']) + float(rtn['highest_bid']))/2
-		chg_24h = float(rtn['percent_change'])
-		volume = float(rtn['base_volume'])
-		rtn = [mid_price, volume, chg_24h]
-		Redisdb.setex("ticker_"+market, random.randint(200, 3000), json.dumps(rtn))
-		return rtn
-	else:
+	if pair[0] == pair[1]:
 		return [1,0,0]
+	# BTS/USD get ticker of BTS with prices in USD
+	rtn = Bitshares.rpc.get_ticker(pair[1], pair[0])
+	mid_price = (float(rtn['lowest_ask']) + float(rtn['highest_bid']))/2
+	chg_24h = float(rtn['percent_change'])
+	volume = float(rtn['base_volume'])
+	rtn = [mid_price, volume, chg_24h]
+	Redisdb.setex("ticker_"+market, random.randint(200, 3000), json.dumps(rtn))
+	return rtn
+
 
 async def account_list():
 	rtn= Redisdb.get("settings_accounts")

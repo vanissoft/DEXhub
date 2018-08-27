@@ -96,7 +96,7 @@ def setup(dfrom=None, days=0, hours=1):
 
 	if dfrom is None:
 		from glob import glob
-		lastf = glob('*.parquet')
+		lastf = glob('bts_trades_*.parquet')
 		if len(lastf) > 0:
 			lastf.sort(reverse=True)
 			df = pd.read_parquet(lastf[0])

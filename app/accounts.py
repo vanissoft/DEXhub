@@ -154,8 +154,9 @@ def trade_history(accounts, mdf=None, module=''):
 	else:
 		tmp = json.loads(rtn.decode('utf8'))
 		Accounts = {v[3]:v[0] for v in tmp}
-	market_data.Account_data(accounts, mdf, data_available)
+	market_data.Account_data(accounts, 30, mdf, data_available)
 	Redisdb.rpush('operations_bg', json.dumps({'call': 'marketdatafeeder_step', 'module': 'general'}))
+
 
 if __name__ == '__main__':
 	#order_history(account)

@@ -26,7 +26,6 @@ WBTS = {}
 Active_module = None
 Assets_id = {}
 Assets_name = {}
-Ohlc_Analyser = None
 MDF = None
 
 def init():
@@ -130,21 +129,20 @@ class Operations_listener():
 			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'market_trades': {'market': data['market'], 'data': movs}}))
 
 	async def get_last_trades(self, data):
-		global Ohlc_Analyser
-		if Ohlc_Analyser is None:
-			Ohlc_Analyser = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()))
-		a = Ohlc_Analyser
+		def response(data):
+			pass
+		a = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF, callback=response)
 		tmp = data['market'].split('/')
 		mkt = Assets_name[tmp[0]]+':'+Assets_name[tmp[1]]
-		a.filter(pair=mkt)
-		#a.filter()
+		if 'dfo' not in a.__dict__:
+			return
 		a.ohlc(timelapse="1h", fill=False)
 		rdates = a.df_ohlc['time'].dt.to_pydatetime().tolist()
 		rdates = [x.isoformat() for x in rdates]
 		movs = [x for x in zip(rdates,
-					 a.df_ohlc.price.open.tolist(), a.df_ohlc.price.close.tolist(),
-					 a.df_ohlc.price.low.tolist(), a.df_ohlc.price.high.tolist(),
-					 a.df_ohlc.receives_amount.receives_amount.tolist())]
+					 a.df_ohlc.priceopen.tolist(), a.df_ohlc.priceclose.tolist(),
+					 a.df_ohlc.pricelow.tolist(), a.df_ohlc.pricehigh.tolist(),
+					 a.df_ohlc.amount_base.tolist())]
 		Redisdb.rpush("datafeed",
 					  json.dumps({'module': Active_module, 'market_trades': {'market': data['market'], 'data': movs}}))
 
@@ -244,7 +242,7 @@ class Operations_listener():
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'data': 'pong'}))
 
 	async def rpc_ping(self, dummy):
-		return await blockchain.read_ticker('BTS/CNY')
+		return await blockchain.read_ticker('BTS/CNY', force=True)
 
 	async def account_tradehistory(self, dat):
 		accounts.trade_history([x[0] for x in accounts.account_list()], MDF, dat['module'])

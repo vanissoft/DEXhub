@@ -11,7 +11,6 @@ import numpy as np
 import os
 import json
 import pickle
-import pyarrow.parquet as pq
 import arrow
 from config import *
 
@@ -44,6 +43,8 @@ class MarketDataFeeder:
 	Datastores_token = {}
 	Datastores_pair = {}
 	Date_ranges = []
+	Assets_id = {}
+	Assets_name = {}
 
 
 	@classmethod
@@ -57,23 +58,45 @@ class MarketDataFeeder:
 			from glob import glob
 			cls.Parquet_files = glob('bts_trades_*.parquet')
 			cls.Parquet_files.sort(reverse=True)
+		with open('assets.pickle', 'rb') as h:
+			tmp = pickle.load(h)
+			cls.Assets_id = {k: v for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
+			cls.Assets_name = {v: k for (k, v) in [(k, v[0]) for (k, v) in tmp.items()]}
 
 
 	@classmethod
 	def precharge_df(cls):
+		print("precharge")
 		for req in cls.Requests_account.items():
 			for acc in req[1]['accounts']:
 				if cls.Datastores_account[acc]['precharged']:
 					continue
-				df_file = 'datastores_account_{}'.format(acc)
+				df_file = 'datastores_account_{}.parquet'.format(acc)
 				rtn = Redisdb.get(df_file)
 				if rtn is not None:
 					cls.Datastores_account[acc]['files'] = json.loads(rtn.decode('utf8'))['files']
+					print("files readed", json.loads(rtn.decode('utf8'))['files'])
 				if os.path.isfile(df_file):
-					df = pd.read_parquet(df_file, 'pyarrow')
+					print("read", df_file)
+					df = pd.read_parquet(df_file)
 					cls.Datastores_account[acc]['df'] = df
 					cls.Datastores_account[acc]['range'] = [arrow.get(df.block_time.min()), arrow.get(df.block_time.max())]
 					cls.Datastores_account[acc]['precharged'] = True
+		for req in cls.Requests_pair.items():
+			for pair in req[1]['pairs']:
+				if cls.Datastores_pair[pair]['precharged']:
+					continue
+				df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/', '_'))
+				rtn = Redisdb.get(df_file)
+				if rtn is not None:
+					cls.Datastores_pair[pair]['files'] = json.loads(rtn.decode('utf8'))['files']
+					print("files readed", json.loads(rtn.decode('utf8'))['files'])
+				if os.path.isfile(df_file):
+					print("read", df_file)
+					df = pd.read_parquet(df_file)
+					cls.Datastores_pair[pair]['df'] = df
+					cls.Datastores_pair[pair]['range'] = [arrow.get(df.index.min()), arrow.get(df.index.max())]
+					cls.Datastores_pair[pair]['precharged'] = True
 		print('precharge')
 
 	@classmethod
@@ -96,7 +119,9 @@ class MarketDataFeeder:
 	@classmethod
 	def step(cls):
 		if len(cls.Files_to_process) > 0:
+			# read 1 file
 			cls.readfile(cls.Files_to_process.pop(0))
+			# and request another call
 			Redisdb.rpush('operations_bg', json.dumps({'call': 'marketdatafeeder_step', 'module': 'general'}))
 			return True
 		return False
@@ -113,7 +138,6 @@ class MarketDataFeeder:
 		if reqr[1] is None:
 			reqr[1] = arrow.utcnow().shift(years=+10)
 
-		excl_list = []
 		if data['type'] == 'account_trades':
 			cls.Requests_account[data['name']] = data
 			for acc in data['accounts']:
@@ -125,20 +149,26 @@ class MarketDataFeeder:
 
 		elif data['type'] == 'pair':
 			cls.Requests_pair[data['name']] = data
+			for pair in data['pairs']:
+				if pair not in cls.Datastores_pair:
+					cls.Datastores_pair[pair] = {'df': None, 'files': [], 'range': [None, None], 'df_file': None, 'precharged': False}
 
 		cls.precharge_df()
 
 		# exclusion list
+		excl_list = set()
 		if data['type'] == 'account_trades':
 			for acc in data['accounts']:
 				for f in cls.Datastores_account[acc]['files']:
-					if f not in excl_list:
-						excl_list.append(f)
+					excl_list.add(f)
 
 		elif data['type'] == 'token':
 			pass
 		elif data['type'] == 'pair':
-			pass
+			for pair in data['pairs']:
+				for f in cls.Datastores_pair[pair]['files']:
+					if f not in excl_list:
+						excl_list.add(f)
 
 		cls._reqlastdata()  # refresh more recent data
 		cls._files_range(reqr, excl_list)
@@ -169,6 +199,64 @@ class MarketDataFeeder:
 				cls.Datastores_account[acc]['df'] = df3
 				cls.Datastores_account[acc]['range'] = [arrow.get(df3.block_time.min()), arrow.get(df3.block_time.max())]
 				print("len Datastores_account", len(df3))
+
+		for req in cls.Requests_pair.items():
+			df = cls.Df_raw_current
+			for pair in req[1]['pairs']:
+				if cls.Last_file != cls.Current_file and cls.Current_file in cls.Datastores_pair[pair]['files']:
+					continue
+				else:
+					cls.Datastores_pair[pair]['files'].append(cls.Current_file)
+				pair_id = cls.Assets_name[pair.split('/')[0]]+':'+cls.Assets_name[pair.split('/')[1]]
+				df2 = df.loc[(df.pair == pair_id)]
+				try:
+					df2 = df2.loc[(df2.pays_amount > 0.00001) & (df2.receives_amount > 0.00001)]
+					if len(df2) == 0:
+						continue
+				except:
+					print('old version?', cls.Current_file)
+					df2['pays_amount'] = df2.quote_amount
+					df2['receives_amount'] = df2.base_amount
+				df2['type'] = 'SELL'
+				df2['amount_quote'] = df2['pays_amount']
+				df2['amount_base'] = df2['receives_amount']
+
+				pair_id_inv = cls.Assets_name[pair.split('/')[1]] + ':' + cls.Assets_name[pair.split('/')[0]]
+				df3 = df.loc[(df.pair == pair_id_inv)]
+				try:
+					df3 = df3.loc[(df3.pays_amount > 0.00001) & (df3.receives_amount > 0.00001)]
+					if len(df3) == 0:
+						continue
+				except:
+					print('old version?', cls.Current_file)
+					df3['pays_amount'] = df3.quote_amount
+					df3['receives_amount'] = df3.base_amount
+				df3['type'] = 'BUY'
+				df3['amount_quote'] = df3['pays_amount']
+				df3['amount_base'] = df3['receives_amount']
+				df3['price'] = 1/df3['price']
+
+				df4 = pd.concat([df2,df3])
+				df4 = df4.set_index(['block_time'], drop=False)
+				df4['pair_text'] = df4['pair'].apply(lambda x: cls.Assets_id[x.split(':')[0]] + "/" + cls.Assets_id[x.split(':')[1]])
+
+				df5 = df4.resample('5min', how={'price': 'ohlc', 'amount_base': 'sum', 'amount_quote': 'sum'}).ffill()
+				df5.columns = df5.columns.map(''.join)
+				#df5['block_time'] = df5.index
+
+				if len(df5) == 0:
+					continue
+				if cls.Datastores_pair[pair]['df'] is not None and len(cls.Datastores_pair[pair]) > 0:
+					df6 = pd.concat([cls.Datastores_pair[pair]['df'], df5])
+					df6 = df6.drop_duplicates()
+				else:
+					df6 = df5
+				#df6 = df6.rename(index=str, columns={'amount_baseamount_base': 'amount_base', 'amount_quoteamount_quote': 'amount_quote'})
+				cls.Datastores_pair[pair]['df'] = df6
+				cls.Datastores_pair[pair]['range'] = [arrow.get(df6.index.min()), arrow.get(df6.index.max())]
+				print("len Datastores token", len(df6))
+
+
 		cls.resprequesters()
 
 	@classmethod
@@ -184,16 +272,33 @@ class MarketDataFeeder:
 					(dts_range[0] <= req[1]['daterange'][0] and dts_range[1] >= req[1]['daterange'][1]):
 					if cls.Datastores_account[acc]['df'] is not None:
 						req[1]['callback'](cls.Datastores_account[acc]['df'])
-						#persistence
-						df_file = 'datastores_account_{}'.format(acc)
+						# persistence. saving when request is fully served
+						df_file = 'datastores_account_{}.parquet'.format(acc)
 						cls.Datastores_account[acc]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
 						Redisdb.set(df_file, json.dumps({'files': cls.Datastores_account[acc]['files']}))
+		for req in cls.Requests_pair.items():
+			for pair in req[1]['pairs']:
+				if cls.Datastores_pair[pair]['range'][0] is None:
+					dts_range = [arrow.get('20000101'), arrow.get('20000101')]
+				else:
+					dts_range = cls.Datastores_pair[pair]['range']
+				if (len(cls.Files_to_process) == 0) or \
+					(len(cls.Parquet_files) == len(cls.Datastores_pair[pair])) or \
+					(dts_range[0] <= req[1]['daterange'][0] and dts_range[1] >= req[1]['daterange'][1]):
+					if cls.Datastores_pair[pair]['df'] is not None:
+						df = cls.Datastores_pair[pair]['df'].rename(columns={'amount_baseamount_base': 'amount_base',
+																			 'amount_quoteamount_quote': 'amount_quote'})
+						req[1]['callback'](df)
+						# persistence. saving when request is fully served
+						df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/','_'))
+						cls.Datastores_pair[pair]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
+						Redisdb.set(df_file, json.dumps({'files': cls.Datastores_pair[pair]['files']}))
 
 	@classmethod
 	def readfile(cls, file):
 		if os.path.isfile(file):
 			print("reading", file)
-			df = pd.read_parquet(file, 'pyarrow')
+			df = pd.read_parquet(file)
 			cls.Current_file = file
 			cls.Current_range = [arrow.get(df.block_time.min()), arrow.get(df.block_time.max())]
 			cls.Df_raw_current = df
@@ -227,11 +332,6 @@ class Account_data:
 	Example:
 	To obtain all trades from accounts:
 		d = Account_data(['account1', 'account2', ...])
-		num = 0
-		while d._next_file() is True:
-			num += 1
-			if num % 5 == 0:
-				d._save()
 
 	"""
 	Dataframe = None
@@ -239,12 +339,11 @@ class Account_data:
 	Accounts_name = {}
 	File_list = []
 	MarketDataFeeder = None
-	CntToSave = 0
 
 
 	@classmethod
 	def data_received(cls, df):
-		print("data received")
+		print("data received from MDF")
 		print(df.block_time.min(), df.block_time.max())
 		if cls.Callback is not None:
 			cls.Callback(df)
@@ -254,7 +353,7 @@ class Account_data:
 	def _save(cls):
 		cls.Dataframe.to_parquet('bts_account_movs.parquet', 'fastparquet', 'GZIP')
 
-	def __init__(self, accounts, MDF, callback):
+	def __init__(self, accounts, days=30, MDF=None, callback=None):
 		cls = self.__class__
 		from bitshares.account import Account
 		for acc in accounts:
@@ -263,25 +362,8 @@ class Account_data:
 			cls.Accounts_name[acc] = id
 		cls.Dataframe = None
 		cls.Callback = callback
-		# last data
-		last = 'bts_account_movs.parquet'
-		cls.DateRange = [arrow.utcnow(), arrow.utcnow()]
-		dr = [arrow.utcnow().shift(years=-10), arrow.utcnow().shift(years=10)]
-		if os.path.isfile(last):
-			df = pd.read_parquet(last, 'pyarrow')
-			for acc in accounts:
-				df2 = df.loc[(df.account_id == cls.Accounts_name[acc])]
-				if len(df2) == 0:
-					dr[0] = arrow.utcnow().shift(years=-10)
-				else:
-					dr[0] = min(dr[0], arrow.get(df.block_time.min()))
-			dr[1] = arrow.utcnow()
-			cls.DateRange = dr
-			cls.Dataframe = df
-			print('daterange', dr)
 
-		dr[0] = arrow.utcnow().shift(days=-15)
-		dr[1] = arrow.utcnow()
+		dr = [arrow.utcnow().shift(days=days*-1), arrow.utcnow()]
 		MDF.request({'name': 'account', 'type': 'account_trades', 'callback': cls.data_received,
 									  'accounts': cls.Accounts_id.keys(), 'daterange': dr})
 		print("request account_trades", dr)
@@ -289,8 +371,53 @@ class Account_data:
 
 
 
+
+class Pair_data:
+	"""
+	Trades by pairs.
+	Reads historic data harvested by tradehistory.py
+
+	Example:
+	To obtain all trades from accounts:
+		d = Pair_data(['pair1', 'pair2', ...])
+
+	"""
+	Dataframe = None
+	Accounts_id = {}
+	Accounts_name = {}
+	File_list = []
+	MarketDataFeeder = None
+
+
+	@classmethod
+	def data_received(cls, df):
+		print("data received from MDF")
+		print(df.index.min(), df.index.max())
+		if cls.Callback is not None:
+			cls.Callback(df)
+
+
+	@classmethod
+	def _save(cls):
+		cls.Dataframe.to_parquet('bts_account_movs.parquet', 'fastparquet', 'GZIP')
+
+	def __init__(self, pairs, timeframe='1h', days=30, MDF=None, callback=None):
+		cls = self.__class__
+		cls.Dataframe = None
+		cls.Callback = callback
+
+		dr = [arrow.utcnow().shift(days=days*-1), arrow.utcnow()]
+		MDF.request({'name': timeframe, 'type': 'pair', 'callback': cls.data_received,
+									  'pairs': pairs, 'daterange': dr})
+		print("request ", {'name': timeframe, 'type': 'pair', 'callback': cls.data_received,
+									  'pairs': pairs, 'daterange': dr})
+
+
+
+
 class Stats:
 	#TODO: mechanism for invalidate cache
+	#TODO: make use of MarketDataFeeder instead of direct read of parquet files
 	Cache = None
 
 	def _load_last_data(self):
@@ -298,8 +425,8 @@ class Stats:
 		from glob import glob
 		files = glob('bts_trades_*.parquet')
 		files.sort()
-		#self.df = pd.read_parquet(files[-1], 'pyarrow')
-		self.df = pq.read_table(files[-1], nthreads=4).to_pandas()
+		self.df = pd.read_parquet(files[-1])
+		#self.df = pq.read_table(files[-1], nthreads=4).to_pandas()
 		import pickle
 		with open('assets.pickle', 'rb') as h:
 			tmp = pickle.load(h)
@@ -384,10 +511,12 @@ class Stats:
 
 if __name__ == "__main__":
 	import os
-	#stats = Stats()
 	a=MarketDataFeeder()
 	print("Starting")
-	d = Account_data(['cjh.ant', 'gauto01'])
+	def froga(data):
+		print("response")
+	b=Pair_data(['BTS/CNY'], '1h', 5, a, froga)
 	while a.step():
 		pass
+
 	print('end')

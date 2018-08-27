@@ -13,65 +13,56 @@ plt.style.use('Solarize_Light2')
 import numpy as np
 import pandas as pd
 import tulipy as ti
+from market_data import Pair_data, MarketDataFeeder
 
-#TODO:
 
 class Common:
 
-	# TODO: allow to incremental adding of data
-	def load_data(self):
-		os.chdir('../data')
-		from glob import glob
-		files = glob('*.parquet')
-		dfl = []
-		for r in arrow.Arrow.range('day', self.range[0], self.range[1].ceil('day')):
-			if r.year < 2018 and False:
-				if r.day == 1 and r.month == 1:
-					f = 'bts_trades_{:04d}{:02d}.parquet'.format(r.year, r.month)
-				else:
-					continue
-			else:
-				f = 'bts_trades_{:04d}{:02d}{:02d}.parquet'.format(r.year, r.month, r.day)
-			d = pd.read_parquet(f, 'pyarrow')
-			dfl.append(d)
-		self.dfo = pd.concat(dfl)
+	MDF = None
 
-	def __init__(self, dataframe=None, range=None):
-		self.range=[]
+	def data_received(self, df):
+		print('data')
+		self.dfo = df
+		self.callback(df)
+
+	def load_data(self):
+		cls = self.__class__
+		b = Pair_data(self.pairs, '5min', 2, cls.MDF, self.data_received)
+		while cls.MDF.step():
+			pass
+
+	def __init__(self, dataframe=None, range=None, minframe='5min', pairs=[], MDF=None, callback=None):
+		cls = self.__class__
+		self.range = []
+		self.pairs = pairs
+		self.callback = callback
+		cls.MDF = MDF
 		if dataframe is None:
 			if range is None:
-				self.range = (arrow.utcnow().shift(days=30), arrow.utcnow())
+				self.range = [arrow.utcnow().shift(days=-10), arrow.utcnow()]
+			elif range[0] is None:
+				self.range = [arrow.utcnow().shift(days=-10), range[1].ceil('day')]
+			elif range[1] is None:
+				self.range = [range[0], arrow.utcnow().shift(days=1)]
 			else:
-				self.range = [range[0], range[1].ceil('day')]
+				self.range = range
 			self.load_data()
 		else:
 			self.dfo = dataframe
-		self.dfo = self.dfo.loc[(self.dfo.block_time > self.range[0].datetime.replace(tzinfo=None))&(self.dfo.block_time < self.range[1].datetime.replace(tzinfo=None))]
-		self.dfo.set_index('block_time', drop=False, inplace=True)
-		self.dff = None
+			#TODO: convert index to datetime
+		#self.dfo = self.dfo.loc[(self.dfo.block_time > self.range[0].datetime.replace(tzinfo=None))&(self.dfo.block_time < self.range[1].datetime.replace(tzinfo=None))]
+		#self.dfo.set_index('block_time', drop=False, inplace=True)
 		self.df_ohlc = None
 
 
-	def filter(self, pair='1.3.0:1.3.113', dust=[1,1]):
-		dff = self.dfo.loc[self.dfo.pair == pair]
-		dff = dff.loc[(dff.pays_amount>dust[0]) & (dff.receives_amount>dust[1])]
-		dff['volume'] = dff['pays_amount']
-		# duplicate with the inverse market
-		tmp = pair.split(':')
-		pair_inv = tmp[1]+':'+tmp[0]
-		dff2 = self.dfo.loc[self.dfo.pair == pair_inv]
-		dff2 = dff2.loc[(dff2.pays_amount>dust[0]) & (dff2.receives_amount>dust[1])]
-		dff2['price'] = dff2['pays_amount'] / dff2['receives_amount']
-		dff2['volume'] = dff2['receives_amount']
-		self.dff = pd.concat((dff, dff2))
-		print(self.dff.pair.count())
-		return self
-
 	def ohlc(self, timelapse='1h', fill=True):
 		if fill:
-			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'receives_amount': 'sum'}).ffill()
+			self.df_ohlc = self.dfo.resample(timelapse, how={'priceopen': 'first', 'pricehigh': 'max', 'pricelow':'min', 'priceclose':'last', 'amount_base': 'sum'}).ffill()
 		else:
-			self.df_ohlc = self.dff.resample(timelapse, how={'price': 'ohlc', 'receives_amount': 'sum'})
+			self.df_ohlc = self.dfo.resample(timelapse, how={'priceopen': 'first', 'pricehigh': 'max', 'pricelow':'min', 'priceclose':'last', 'amount_base': 'sum'})
+		# rename columns in multi-index
+		#self.df_ohlc.columns = self.df_ohlc.columns.map(lambda x: x[0])
+		#self.df_ohlc = self.df_ohlc.iloc[:, [0,4]]
 		self.df_ohlc = self.df_ohlc.dropna()
 		self.df_ohlc['time'] = self.df_ohlc.index
 		return self
@@ -128,42 +119,48 @@ class Analyze(Common):
 
 	def sma(self, name='sma', period=5):
 		if len(self.df_ohlc) > period:
-			self._add_column_to_ohlc(name, ti.sma(self.df_ohlc.price.close.values, period=period))
+			self._add_column_to_ohlc(name, ti.sma(self.df_ohlc.priceclose.values, period=period))
 
 	def ema(self, name='ema', period=5):
 		if len(self.df_ohlc) > period:
-			self._add_column_to_ohlc(name, ti.ema(self.df_ohlc.price.close.values, period=period))
+			self._add_column_to_ohlc(name, ti.ema(self.df_ohlc.priceclose.values, period=period))
 
 	def stoch(self, name='stoch', kp=14, ksp=3, d=3):
 		if len(self.df_ohlc) > kp:
-			self._add_column_to_ohlc(name, ti.stoch(self.df_ohlc.price.high.values, self.df_ohlc.price.low.values, self.df_ohlc.price.close.values, kp, ksp, d))
+			self._add_column_to_ohlc(name, ti.stoch(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, kp, ksp, d))
 
 	def stoch_rsi(self, name='stoch_rsi', kp=14, ksp=3, d=3):
 		if len(self.df_ohlc) > kp:
 			if 'rsi' not in self.df_ohlc.columns:
-				self._add_column_to_ohlc("rsi", ti.rsi(self.df_ohlc.price.close.values, kp))
+				self._add_column_to_ohlc("rsi", ti.rsi(self.df_ohlc.priceclose.values, kp))
 			v = self.df_ohlc.rsi.dropna().values
 			self._add_column_to_ohlc(name, ti.stoch(v, v, v, kp, ksp, d))
 
 	def cci(self, name='cci', period=20):
 		if len(self.df_ohlc) > period:
-			self._add_column_to_ohlc(name, ti.cci(self.df_ohlc.price.high.values, self.df_ohlc.price.low.values, self.df_ohlc.price.close.values, period))
+			self._add_column_to_ohlc(name, ti.cci(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, period))
 
 	def rsi(self, name='rsi', period=14):
 		if len(self.df_ohlc) > period:
-			self._add_column_to_ohlc(name, ti.rsi(self.df_ohlc.price.close.values, period))
+			self._add_column_to_ohlc(name, ti.rsi(self.df_ohlc.priceclose.values, period))
 
-	def wavetrend(self, name='wt', d_factor=0.035):
+	def wavetrend(self, name='wt', d_factor=0.015):
 		"""
 		https://www.quantopian.com/posts/wavetrend-oscillator
 		"""
-		ap = (self.df_ohlc.price.high + self.df_ohlc.price.low + self.df_ohlc.price.close)/3
+		ap = (self.df_ohlc.pricehigh + self.df_ohlc.pricelow + self.df_ohlc.priceclose)/3
 		ap = ap.values
 		#esa = numpy_ewma_vectorized_v2(ap, 10)
-		esa = ti.ema(ap,10)
-		diff_ = abs(ap - esa)
-		d = ti.ema(diff_, 10)
-		d[0] = d[1]
+		esa = ti.ema(ap, 10)
+		d = ti.ema(abs(ap - esa), 10)
+		# checking for zeroes
+		i = 0
+		while d[i] == 0:
+			i += 1
+		if i > 0:
+			ap = ap[i:]
+			esa = esa[i:]
+			d = d[i:]
 		ci = (ap - esa) / (d_factor * d)
 		tci = ti.ema(ci, 21)
 		wt1 = _zero_padding(tci, len(ap))
@@ -171,33 +168,64 @@ class Analyze(Common):
 
 
 def test_stoch_rsi():
-	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-06')))
-	a.filter()
-	ts = ['5min', '8min', '13min', '21min', '34min'][:-1]
+	print("Starting")
+	def froga(data):
+		print("response")
+
+	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-26')), pairs=['BTS/CNY'], MDF=MarketDataFeeder(), callback=froga)
+	ts = ['5min', '30min', '1h', '4h'][:-1]
 	series = []
 	for tl in ts:
 		a.ohlc(timelapse=tl).stoch_rsi()
 		s = a.df_ohlc.stoch_rsi
 		s.name = s.name+"_"+tl
 		series.append(s)
-	series.append(a.df_ohlc.price.open)
-	series.append(a.df_ohlc.price.close)
+	#series.append(a.df_ohlc.priceopen)
+	series.append(a.df_ohlc.priceclose)
 	df = pd.concat(series, axis=1)
 	for col in df.columns:
 		df[col] = df[col].interpolate(method='linear')
 	df['time'] = df.index
 	g = ['stoch_rsi_{}'.format(x) for x in ts]
-	df[g].plot()
+	#df['priceclose'].plot()
+	df[-20:][g].plot()
+
+	a.ohlc(timelapse='1h').wavetrend()
+	a.df_ohlc[['wt']].plot()
+
+	print()
+
+
+def test_wavetrend():
+	print("Starting")
+	def froga(data):
+		print("response")
+
+	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-26')), pairs=['BTS/CNY'], MDF=MarketDataFeeder(), callback=froga)
+	ts = ['5min', '30min', '1h', '4h'][:-1]
+	series = []
+	for tl in ts:
+		a.ohlc(timelapse=tl).wavetrend()
+		s = a.df_ohlc.wt
+		s.name = s.name+"_"+tl
+		series.append(s)
+	series.append(a.df_ohlc.priceclose)
+	df = pd.concat(series, axis=1)
+	for col in df.columns:
+		df[col] = df[col].interpolate(method='linear')
+	df['time'] = df.index
+	g = ['wt_{}'.format(x) for x in ts]
+	df[-60:][g].plot()
+
 	print()
 
 
 def test_prophet():
 	from fbprophet import Prophet
 	a = Analyze(range=(arrow.get('2018-07-01'), arrow.get('2018-08-15')))
-	a.filter()
 	df = a.ohlc(timelapse="1h").df_ohlc
 	df['ds'] = df.index
-	df['y'] = df.price.close
+	df['y'] = df.priceclose
 	m = Prophet(weekly_seasonality=True)
 	m.add_seasonality(name='8h', period=8, fourier_order=5)
 	m.add_seasonality(name='12h', period=12, fourier_order=5)
@@ -218,7 +246,7 @@ if __name__ == "__main__":
 	print("Starting")
 	print("ok1")
 	#test_prophet()
-	test_stoch_rsi()
+	test_wavetrend()
 	if False:
 		d = []
 		for i in (21,34,55,89,144,233):
