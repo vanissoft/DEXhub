@@ -25,14 +25,14 @@ class Wscomm():
 		# error in callback will showed here
 		try:
 			data = json.loads(evt.data)
-			if self.callback is not None:
-				self.callback(data)
 		except Exception as err:
 			if 'Unexpected' in err.__repr__():
 				pos = int(err.__repr__().split(" ")[-1].split(">")[0])
 				print("error pos:", evt.data[pos-10:pos+10])
 			print("ws error evt.data", self.callback, evt.data[:100], evt.data[-100:])
 			print("ws error:", err.__repr__())
+		if self.callback is not None:
+			self.callback(data)
 
 	def _on_close(self, evt):
 		alert("Connection is closed")

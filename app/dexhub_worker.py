@@ -129,22 +129,19 @@ class Operations_listener():
 			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'market_trades': {'market': data['market'], 'data': movs}}))
 
 	async def get_last_trades(self, data):
-		def response(data):
-			pass
-		a = ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF, callback=response)
-		tmp = data['market'].split('/')
-		mkt = Assets_name[tmp[0]]+':'+Assets_name[tmp[1]]
-		if 'dfo' not in a.__dict__:
-			return
-		a.ohlc(timelapse="1h", fill=False)
-		rdates = a.df_ohlc['time'].dt.to_pydatetime().tolist()
-		rdates = [x.isoformat() for x in rdates]
-		movs = [x for x in zip(rdates,
-					 a.df_ohlc.priceopen.tolist(), a.df_ohlc.priceclose.tolist(),
-					 a.df_ohlc.pricelow.tolist(), a.df_ohlc.pricehigh.tolist(),
-					 a.df_ohlc.amount_base.tolist())]
-		Redisdb.rpush("datafeed",
-					  json.dumps({'module': Active_module, 'market_trades': {'market': data['market'], 'data': movs}}))
+		def response(obj, pair, data):
+			if 'dfo' not in obj.__dict__:
+				return
+			obj.ohlc(timelapse="1h", fill=False)
+			rdates = obj.df_ohlc['time'].dt.to_pydatetime().tolist()
+			rdates = [x.isoformat() for x in rdates]
+			movs = [x for x in zip(rdates,
+								   obj.df_ohlc.priceopen.tolist(), obj.df_ohlc.priceclose.tolist(),
+								   obj.df_ohlc.pricelow.tolist(), obj.df_ohlc.pricehigh.tolist(),
+								   obj.df_ohlc.amount_base.tolist())]
+			Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'market_trades': {'market': pair, 'data': movs}}))
+
+		ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF, callback=response)
 
 	async def account_list(self, dummy):
 		accs = accounts.account_list()

@@ -211,8 +211,6 @@ class MarketDataFeeder:
 				df2 = df.loc[(df.pair == pair_id)]
 				try:
 					df2 = df2.loc[(df2.pays_amount > 0.00001) & (df2.receives_amount > 0.00001)]
-					if len(df2) == 0:
-						continue
 				except:
 					print('old version?', cls.Current_file)
 					df2['pays_amount'] = df2.quote_amount
@@ -225,8 +223,6 @@ class MarketDataFeeder:
 				df3 = df.loc[(df.pair == pair_id_inv)]
 				try:
 					df3 = df3.loc[(df3.pays_amount > 0.00001) & (df3.receives_amount > 0.00001)]
-					if len(df3) == 0:
-						continue
 				except:
 					print('old version?', cls.Current_file)
 					df3['pays_amount'] = df3.quote_amount
@@ -288,7 +284,7 @@ class MarketDataFeeder:
 					if cls.Datastores_pair[pair]['df'] is not None:
 						df = cls.Datastores_pair[pair]['df'].rename(columns={'amount_baseamount_base': 'amount_base',
 																			 'amount_quoteamount_quote': 'amount_quote'})
-						req[1]['callback'](df)
+						req[1]['callback'](pair, df)
 						# persistence. saving when request is fully served
 						df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/','_'))
 						cls.Datastores_pair[pair]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
@@ -390,11 +386,11 @@ class Pair_data:
 
 
 	@classmethod
-	def data_received(cls, df):
+	def data_received(cls, pair, df):
 		print("data received from MDF")
 		print(df.index.min(), df.index.max())
 		if cls.Callback is not None:
-			cls.Callback(df)
+			cls.Callback(pair, df)
 
 
 	@classmethod

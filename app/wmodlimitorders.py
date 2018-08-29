@@ -33,17 +33,17 @@ def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
-	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
 	document["bReloadOrders"].bind('click', click_reload_orders)
 	document["bBalances"].bind('click', click_balances)
 	jq("#echartx").hide()
 	jq("#echarty").hide()
 
 def click_reload_orders(ev):
-	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
 
 def click_balances(ev):
-	Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue'})
+	Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue_bg'})
 
 def click_delete_order(ev):
 	global Order_id_deleted
@@ -67,7 +67,7 @@ def on_tabshown(ev):
 	Ws_comm.send({'call': 'get_last_trades', 'market': market,
 		'date_from': (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(),
 		'date_to': datetime.datetime.now().isoformat(),
-		'module': Module_name, 'operation': 'enqueue'})
+		'module': Module_name, 'operation': 'enqueue_bg'})
 
 	if market not in ChartData:
 		return

@@ -28,6 +28,7 @@ Binds = [['dashboard.html', 'wmoddashboard'],
 		['limit_orders.html', 'wmodlimitorders'],
 		['trades_statistics.html', 'wmodtstats'],
 		['tradehistory.html', 'wmodtradehistory'],
+		['market_charts.html', 'wmodmarketcharts'],
 		['metrics.html', ''],
 		['usage.html', ''],
 		['activity.html', ''],
@@ -73,7 +74,7 @@ Incoming_data = {}
 
 def ws_received(data):
 	global Ws_comm
-	print("incoming ",data['module'], "active:", Active_module.Module_name)
+	print("wmain.ws_received ",data['module'], "active:", Active_module.Module_name)
 	if 'message' in data:
 		wmodgeneral.message(data)
 	elif data['module'] == 'general':
@@ -84,7 +85,7 @@ def ws_received(data):
 				Incoming_data[data['module']] = []
 			Incoming_data[data['module']].append(data)
 		else:
-			print(data['module'], Active_module.Module_name)
+			#print(data['module'], Active_module.Module_name)
 			Active_module.incoming_data(data)
 
 Ws_comm = wwebsockets.Wscomm("ws://127.0.0.1:8808/comm", ws_received)

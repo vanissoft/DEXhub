@@ -20,11 +20,12 @@ class Common:
 
 	MDF = None
 
-	def data_received(self, df):
+	def data_received(self, pair, df):
 		print('data')
 		self.dfo = df
-		self.callback(df)
+		self.callback(self, pair, df)
 
+	#TODO: local steps are temporal
 	def load_data(self):
 		cls = self.__class__
 		b = Pair_data(self.pairs, '5min', 2, cls.MDF, self.data_received)
@@ -198,24 +199,24 @@ def test_stoch_rsi():
 
 def test_wavetrend():
 	print("Starting")
-	def froga(data):
-		print("response")
 
-	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-26')), pairs=['BTS/CNY'], MDF=MarketDataFeeder(), callback=froga)
-	ts = ['5min', '30min', '1h', '4h'][:-1]
-	series = []
-	for tl in ts:
-		a.ohlc(timelapse=tl).wavetrend()
-		s = a.df_ohlc.wt
-		s.name = s.name+"_"+tl
-		series.append(s)
-	series.append(a.df_ohlc.priceclose)
-	df = pd.concat(series, axis=1)
-	for col in df.columns:
-		df[col] = df[col].interpolate(method='linear')
-	df['time'] = df.index
-	g = ['wt_{}'.format(x) for x in ts]
-	df[-60:][g].plot()
+	def froga(obj, pair, data):
+		ts = ['5min', '30min', '1h', '4h'][:-1]
+		series = []
+		for tl in ts:
+			obj.ohlc(timelapse=tl).wavetrend()
+			s = obj.df_ohlc.wt
+			s.name = s.name + "_" + tl
+			series.append(s)
+		series.append(obj.df_ohlc.priceclose)
+		df = pd.concat(series, axis=1)
+		for col in df.columns:
+			df[col] = df[col].interpolate(method='linear')
+		df['time'] = df.index
+		g = ['wt_{}'.format(x) for x in ts]
+		df[-120:][g].plot()
+
+	a = Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=['BTS/CNY', 'OPEN.BTC/USD'], MDF=MarketDataFeeder(), callback=froga)
 
 	print()
 
