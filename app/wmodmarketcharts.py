@@ -40,6 +40,15 @@ def init(comm):
 	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
 
 
+def chart1(pair):
+	jq("#echart1").show()
+	ograph = window.echarts.init(document.getElementById("echart1"))
+	og = w_mod_graphs.OrderBook1(ograph)
+	og.title = pair + " orderbook"
+	og.market = pair
+	#og.orders = Order_pos[pair]
+	og.load_data(ChartData[pair])
+
 
 def on_tabshown(ev):
 	id = int(ev.target.hash.split("-")[1])
@@ -54,13 +63,7 @@ def on_tabshown(ev):
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
 		return
 
-	jq("#echart1").show()
-	ograph = window.echarts.init(document.getElementById("echart1"))
-	og = w_mod_graphs.OrderBook1(ograph)
-	og.title = market + " orderbook"
-	og.market = market
-	#og.orders = Order_pos[market]
-	og.load_data(ChartData[market])
+	chart1(market)
 	jq("#echart2").show()
 
 
@@ -102,10 +105,9 @@ def incoming_data(data):
 		maxv = data['orderbook']['data'][0][3]
 		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
 		ChartData[market] = data['orderbook']['data']
+		chart1(market)
 
 	elif 'market_trades' in data:
-		print('a3')
-		print("market_trades received")
 		market = data['market_trades']['market']
 		ograph = window.echarts.init(document.getElementById("echart2"))
 		og = w_mod_graphs.MarketTrades1(ograph)
