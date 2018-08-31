@@ -13,7 +13,9 @@ plt.style.use('Solarize_Light2')
 import numpy as np
 import pandas as pd
 import tulipy as ti
+import json
 from market_data import Pair_data, MarketDataFeeder
+from config import *
 
 
 class Common:
@@ -168,6 +170,52 @@ class Analyze(Common):
 		self._add_column_to_ohlc(name, wt1)
 
 
+def last_trades(module, range, pairs, MDF):
+
+	def response(obj, pair, data):
+		if 'dfo' not in obj.__dict__:
+			return
+		obj.ohlc(timelapse="1h", fill=False)
+		rdates = obj.df_ohlc['time'].dt.to_pydatetime().tolist()
+		rdates = [x.isoformat() for x in rdates]
+		movs = [x for x in zip(rdates,
+							   obj.df_ohlc.priceopen.tolist(), obj.df_ohlc.priceclose.tolist(),
+							   obj.df_ohlc.pricelow.tolist(), obj.df_ohlc.pricehigh.tolist(),
+							   obj.df_ohlc.amount_base.tolist())]
+		Redisdb.rpush("datafeed", json.dumps({'module': module, 'market_trades': {'market': pair, 'data': movs}}))
+
+	Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=pairs, MDF=MDF, callback=response)
+
+
+def feed_wavetrend(module, range, pairs, MDF):
+
+	def response2(obj, pair, data):
+		ts = ['5min', '30min', '1h', '4h']
+		series = []
+		for tl in ts:
+			obj.ohlc(timelapse=tl).wavetrend()
+			s = obj.df_ohlc.wt
+			s.name = s.name + "_" + tl
+			series.append(s)
+		series.append(obj.df_ohlc.priceclose)
+		df = pd.concat(series, axis=1)
+		for col in df.columns:
+			df[col] = df[col].interpolate(method='linear')
+		df['time'] = df.index
+		g = ['wt_{}'.format(x) for x in ts]
+		#df[-120:][g].plot()
+		rdates = obj.df_ohlc['time'].dt.to_pydatetime().tolist()
+		rdates = [x.isoformat() for x in rdates]
+		movs = [x for x in zip(rdates, *[df['wt_'+x].tolist() for x in ts])]
+		Redisdb.rpush("datafeed", json.dumps({'module': module,
+											  'analysis_wavetrend':
+												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
+
+
+	Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=pairs, MDF=MarketDataFeeder(), callback=response2)
+
+
+
 def test_stoch_rsi():
 	print("Starting")
 	def froga(data):
@@ -200,8 +248,8 @@ def test_stoch_rsi():
 def test_wavetrend():
 	print("Starting")
 
-	def froga(obj, pair, data):
-		ts = ['5min', '30min', '1h', '4h'][:-1]
+	def results(obj, pair, data):
+		ts = ['5min', '30min', '1h', '4h']
 		series = []
 		for tl in ts:
 			obj.ohlc(timelapse=tl).wavetrend()
@@ -216,7 +264,7 @@ def test_wavetrend():
 		g = ['wt_{}'.format(x) for x in ts]
 		df[-120:][g].plot()
 
-	a = Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=['BTS/CNY', 'OPEN.BTC/USD'], MDF=MarketDataFeeder(), callback=froga)
+	a = Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=['BTS/CNY', 'OPEN.BTC/USD'], MDF=MarketDataFeeder(), callback=results)
 
 	print()
 
@@ -247,7 +295,7 @@ if __name__ == "__main__":
 	print("Starting")
 	print("ok1")
 	#test_prophet()
-	test_wavetrend()
+	feed_wavetrend()
 	if False:
 		d = []
 		for i in (21,34,55,89,144,233):

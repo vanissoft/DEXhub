@@ -23,6 +23,8 @@ class Wscomm():
 
 	def _on_message(self, evt):
 		# error in callback will showed here
+		if 'NaN' in evt.data:
+			print("*** error NaN ***", evt.data[:100])
 		try:
 			data = json.loads(evt.data)
 		except Exception as err:
@@ -32,6 +34,7 @@ class Wscomm():
 			print("ws error evt.data", self.callback, evt.data[:100], evt.data[-100:])
 			print("ws error:", err.__repr__())
 		if self.callback is not None:
+			print("<<<callback")
 			self.callback(data)
 
 	def _on_close(self, evt):

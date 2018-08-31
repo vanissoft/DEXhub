@@ -121,7 +121,8 @@ class Operations_listener():
 		rtn = await blockchain.open_positions()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'open_positions': rtn}))
 
-	async def get_market_trades(self, data):
+	#TODO: remove
+	async def remove_get_market_trades(self, data):
 		movs = await blockchain.get_market_trades(data)
 		if movs is not None and len(movs) > 0:
 			movs.sort(key=lambda x: x[0])
@@ -129,19 +130,10 @@ class Operations_listener():
 			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'market_trades': {'market': data['market'], 'data': movs}}))
 
 	async def get_last_trades(self, data):
-		def response(obj, pair, data):
-			if 'dfo' not in obj.__dict__:
-				return
-			obj.ohlc(timelapse="1h", fill=False)
-			rdates = obj.df_ohlc['time'].dt.to_pydatetime().tolist()
-			rdates = [x.isoformat() for x in rdates]
-			movs = [x for x in zip(rdates,
-								   obj.df_ohlc.priceopen.tolist(), obj.df_ohlc.priceclose.tolist(),
-								   obj.df_ohlc.pricelow.tolist(), obj.df_ohlc.pricehigh.tolist(),
-								   obj.df_ohlc.amount_base.tolist())]
-			Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'market_trades': {'market': pair, 'data': movs}}))
+		ohlc_analysers.last_trades(module=Active_module, range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 
-		ohlc_analysers.Analyze(range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF, callback=response)
+	async def analysis_wavetrend(self, data):
+		ohlc_analysers.feed_wavetrend(module=Active_module, range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 
 	async def account_list(self, dummy):
 		accs = accounts.account_list()

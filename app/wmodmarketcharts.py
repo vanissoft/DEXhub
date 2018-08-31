@@ -24,7 +24,9 @@ Module_name = "marketcharts"
 Objcharts = {}
 MarketTab = {}
 MarketTab2 = {}
-ChartData = {}
+ChartData_trades = {}
+ChartData_analisis1 = {}
+ChartData_analisis2 = {}
 Order_pos = {}
 Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
@@ -47,7 +49,15 @@ def chart1(pair):
 	og.title = pair + " orderbook"
 	og.market = pair
 	#og.orders = Order_pos[pair]
-	og.load_data(ChartData[pair])
+	og.load_data(ChartData_trades[pair])
+
+def chart3(pair):
+	jq("#echart3").show()
+	ograph = window.echarts.init(document.getElementById("echart3"))
+	og = w_mod_graphs.SeriesSimple(ograph)
+	og.title = pair + " series"
+	og.market = pair
+	og.load_data(ChartData_analisis1[pair])
 
 
 def on_tabshown(ev):
@@ -59,12 +69,17 @@ def on_tabshown(ev):
 		'date_to': datetime.datetime.now().isoformat(),
 		'module': Module_name, 'operation': 'enqueue_bg'})
 
-	if market not in ChartData:
+	if market not in ChartData_trades:
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
-		return
+	else:
+		chart1(market)
+		jq("#echart2").show()
 
-	chart1(market)
-	jq("#echart2").show()
+	if market not in ChartData_analisis1:
+		Ws_comm.send({'call': 'analysis_wavetrend', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart3(market)
+		jq("#echart3").show()
 
 
 def create_tab(num, name, market, badge1):
@@ -98,13 +113,12 @@ def incoming_data(data):
 		if False:
 			for l in dat[:3]:
 				Ws_comm.send({'call': 'get_orderbook', 'market': l[0], 'module': Module_name, 'operation': 'enqueue_bg'})
-
 	elif 'orderbook' in data:
 		print('a2')
 		market = data['orderbook']['market']
 		maxv = data['orderbook']['data'][0][3]
 		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
-		ChartData[market] = data['orderbook']['data']
+		ChartData_trades[market] = data['orderbook']['data']
 		chart1(market)
 
 	elif 'market_trades' in data:
@@ -117,7 +131,8 @@ def incoming_data(data):
 			og.orders = Order_pos[market]
 		og.load_data(data['market_trades']['data'])
 
-	elif 'balances' in data:
-		print("----- balances")
-		for b in data['balances']:
-			print(b)
+	elif 'analysis_wavetrend' in data:
+		print("analysis")
+		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
+		chart3(data['analysis_wavetrend']['market'])
+

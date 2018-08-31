@@ -98,14 +98,11 @@ async def wscomms(request, ws):
 async def feeder():
 	while True:
 		while True:
-			# TODO: loop until the datafeed queue gets empty
 			rtn = Redisdb.lpop("datafeed")
 			if rtn is None:
 				break
-			df = json.loads(rtn.decode('utf8'))
 			try:
-				print("sending")
-				#await Client_comm.send(json.dumps(df))
+				print("sending", rtn[:80])
 				await Client_comm.send(rtn.decode('utf8'))
 			except Exception as err:
 				print(err.__repr__())

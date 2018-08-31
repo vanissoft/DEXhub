@@ -180,7 +180,7 @@ def init():
 	*
 	:return:
 	"""
-	load_assets()
+	#load_assets()
 	print("end loading assets")
 
 
@@ -448,8 +448,8 @@ async def open_positions():
 
 
 
-
-async def get_market_trades(data):
+#TODO: replaced by market_data.py
+async def get_market_trades_delete(data):
 	mkt, date_from, date_to = (data['market'], data['date_from'], data['date_to'])
 	pairs = mkt.split("/")
 	quote = Redisdb.hget("asset1:" + pairs[0], 'id').decode('utf8')  # quote

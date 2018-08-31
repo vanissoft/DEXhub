@@ -30,18 +30,6 @@ class graph_orderbook:
 		self.init()
 
 	def init(self):
-		choption = {"tooltip": {}, "title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
-					"grid": {"show": False, 'borderColor': '#f00', "top": "30", "bottom": "20", "left": "20", "right": "20"},
-					"xAxis": {"type": 'value',
-								"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
-								"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
-								"axisTick": {"lineStyle": {"color": "#aaa"}}},
-					"yAxis": {"show": False, "splitLine": {"lineStyle": {"color": '#444', "width": 1}},
-								"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
-								"axisTick": {"lineStyle": {"color": "#aca"}}},
-					"series": [{"id": "b", "name": '1', "type": 'line', "data": [], "showSymbol": False},
-								{"id": "s", "name": '2', "type": 'line', "data": [], "showSymbol": False}
-								]}
 		print("graph_orderbook init")
 
 
@@ -86,7 +74,9 @@ class graph_orderbook:
 		else:
 			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "bottom": "20", "left": "10", "right": "15"}})
 
-		self.chart1.setOption({"tooltip": {},
+		self.chart1.setOption({
+			"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
+			"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"xAxis": {"min": None, "max": None, "type": 'value',
 					"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
@@ -131,6 +121,69 @@ class graph_orderbook:
 			self.chart1.setOption({"series": [{"id": "b", "markLine": {"silent": True, "animation": False, "data": dat}}]})
 
 
+
+class graph_simple:
+
+	def __init__(self, objchart):
+		self.chart1 = objchart
+		self.market = ''
+		self.data = None
+		self.limits_x = None
+		self.limits_y = None
+		self.zoom_back = []
+		self.callbacks = {}
+		self.title = ''
+		self.setoption_data = None
+		self.init()
+
+	def init(self):
+		print("graph_simple init")
+
+
+
+	def load_data(self, dat):
+		self.data = dat
+		print("graph loaddata", dat[:10])
+		self.limits_x = [dat[0][0], dat[-1][0]]
+
+		self.limits_y = [min(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None]),
+						 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
+
+		print(dat[0], dat[-1])
+		if self.title != "":
+			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
+
+		self.chart1.setOption({"tooltip": {"trigger": 'axis',"axisPointer": {"type": 'cross'}},
+    							"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
+			"xAxis": {"type": 'category',
+					  "axisLine": {"show": True, "lineStyle": {"color": '#aaa', "width": 0.5}},
+					  "data": [x[0] for x in dat]},
+			"yAxis": {"type": "value", "axisPointer": {"snap": True},
+					  	"scale": True, "splitArea": {"show": False},
+					  "min": -400, "max": 400,
+					  "axisLabel": {'show': True, 'color': "#ececec"},
+					   "splitLine": {"show": True, "lineStyle": {"color": "#555"}},
+						"axisLine": {"show": False, "lineStyle": {"color": '#999', "width": 0.5}},
+						  "axisTick": {"lineStyle": {"color": "#888", "width": 0.5}}},
+			"responsive": True,
+			"animation": False,
+			"series":
+				[{"id": "b",
+					"name": "5min", "data": [x[1] for x in dat if x[1] is not None],
+				  	"smooth": False,
+						"type": 'line', "showSymbol": False
+				},
+				{"id": "s",
+					"name": "1h", "data": [x[2] for x in dat if x[2] is not None],
+					 "smooth": False,
+					 "type": 'line', "showSymbol": False
+				}],
+			"itemStyle": {"normal": {"color": '#999'}}
+		})
+
+
+
+
 class OrderBook1(graph_orderbook):
 
 	def __init__(self, objchart):
@@ -153,7 +206,8 @@ class MarketTrades1(graph_orderbook):
 		print("cat data", self.data['category_data'][:2])
 		print("lenght", len(self.data['data']))
 
-		gdata = {"tooltip": {},
+		gdata = {"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
+			"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"axisPointer": {'link': {'xAxisIndex': 'all'}, 'label': {'backgroundColor': '#ca5'}},
 			"yAxis": [{"scale": True, "splitArea": {"show": False}, "axisLabel": {'show': True, 'color': "#ececec"},
 				"splitLine": {"show": True, "lineStyle": {"color": "#555"}}},
@@ -207,6 +261,13 @@ class MarketTrades1(graph_orderbook):
 		self.chart1.setOption(gdata)
 
 
+class SeriesSimple(graph_simple):
+
+	def __init__(self, objchart):
+		super().__init__(objchart)
+
+
+
 
 class PieChart1(graph_orderbook):
 	def __init__(self, objchart):
@@ -218,7 +279,8 @@ class PieChart1(graph_orderbook):
 		data = data[:5]
 
 		gdata = {"tooltip": {"trigger": 'item', "formatter": "{a} <br/>{b}: {c} ({d}%)"},
-				"series": [{"name": 'Balances', "type":'pie', "radius": ['40%', '55%'],
+				 "toolbox": {"show": True, "feature": {"saveAsImage": {}}},
+				 "series": [{"name": 'Balances', "type":'pie', "radius": ['40%', '55%'],
 								"center": ['50%', '50%'],
 								"label": {"normal": {"formatter": '{b|{b}}{abg|}\n{hr|}\n {c}  {per|{d}%}  ',
 													"backgroundColor": '#eee', "borderColor": '#aaa', "borderWidth": 1,
