@@ -69,17 +69,18 @@ def on_tabshown(ev):
 		'date_to': datetime.datetime.now().isoformat(),
 		'module': Module_name, 'operation': 'enqueue_bg'})
 
+	if market not in ChartData_analisis1:
+		Ws_comm.send({'call': 'analysis_wavetrend', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart3(market)
+		jq("#echart3").show()
+
 	if market not in ChartData_trades:
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		chart1(market)
 		jq("#echart2").show()
 
-	if market not in ChartData_analisis1:
-		Ws_comm.send({'call': 'analysis_wavetrend', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
-	else:
-		chart3(market)
-		jq("#echart3").show()
 
 
 def create_tab(num, name, market, badge1):

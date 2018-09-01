@@ -109,69 +109,26 @@ import hashlib
 import base64
 from bitshares import BitShares
 import blockchain
+import pickle
+import os
 
 WBTS = None
+Assets = {}
+Assets_id = {}
+Assets_name = {}
 
-#TODO: sustitute by static assets.json
+
+
 def load_assets():
-	"""
-	Load all the Bitshares assets.
-	:return:
-	"""
-	print("bitshares_data.init > load_assets")
-
-	def write(batch):
-		"""
-		Writes assets to DB
-		:param batch:
-		:return:
-		"""
-		p = Redisdb.pipeline()
-		for b in batch:
-			for k in b.keys():
-				if k == 'options':
-					p.hset("asset1:" + b['symbol'], k, json.dumps(b[k]))
-					p.hset("asset2:" + b['id'], k, json.dumps(b[k]))
-				else:
-					p.hset("asset1:" + b['symbol'], k, b[k])
-					p.hset("asset2:" + b['id'], k, b[k])
-		p.incr("status:loading_assets", 100)
-		p.execute()
-
-	Redisdb.set("status:loading_assets", 0)
-	cols = "id,issuer,dynamic_asset_data_id,symbol,precision,description_main,description_market,\
-			description_short_name,market_fee_percent,issuer_permissions,flags,max_supply,options".split(",")
-	next_asset = ""
-	while True:
-		dassets = []
-		assets = Bitshares.rpc.list_assets(next_asset, 100)
-		for a in assets:
-			row = {}
-			for col in a.keys():
-				if col in cols:
-					row[col] = a[col]
-			for col in a['options'].keys():
-				if col in cols:
-					row[col] = a['options'][col]
-			row['description_main'] = ''
-			row['description_market'] = ''
-			row['description_short_name'] = ''
-			if a['options']['description'][:1] == "{":
-				desc = json.loads(a['options']['description'])
-				row['description_main'] = desc['main']
-				if 'market' in desc:
-					row['description_market'] = desc['market']
-				if 'short_name' in desc:
-					row['description_short_name'] = desc['short_name']
-			else:
-				row['description_main'] = a['options']['description']
-			dassets.append(row)
-		write(dassets)
-		next_asset = a['symbol'] + " "
-		if len(assets) < 100:
-			break
-	Redisdb.set("status:loading_assets", len(assets))
-	print("bitshares_data.init > load_assets end")
+	global Assets, Assets_id, Assets_name
+	if len(Assets_id) > 0:
+		return
+	os.chdir('../data')
+	with open('assets.pickle', 'rb') as h:
+		tmp = pickle.load(h)
+	Assets = {k: v for (k, v) in [(k, v) for (k, v) in tmp.items()]}
+	Assets_id = {k:v for (k,v) in [(k,v[0]) for (k,v) in tmp.items()]}
+	Assets_name = {v:k for (k,v) in [(k,v[0]) for (k,v) in tmp.items()]}
 
 
 def init():
@@ -262,6 +219,9 @@ async def get_balances():
 	Return balance consolidated with "balances_openpos"
 	:return: {'asset': [balance, open orders], ...}
 	"""
+	global Assets
+	load_assets()
+
 	accounts = await account_list()
 	bal1 = await read_balances()
 	if bal1 is None:
@@ -285,7 +245,7 @@ async def get_balances():
 			for t in enumerate(tick):
 				if t[1] == float('Infinity'):
 					tick[t[0]] = 0
-			bal1[ac][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Redisdb.hget("asset1:" + b, 'precision'))])
+			bal1[ac][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Assets[Assets_name[b]][1])])
 
 	margin_lock_BTS = {}
 	margin_lock_USD = {}
@@ -311,27 +271,27 @@ async def get_balances():
 
 
 async def get_orderbook(data):
+	global Assets, Assets_id
+	load_assets()
 	mkt = data['market']
 	pairs = mkt.split("/")
-	p1 = Redisdb.hget("asset1:" + pairs[0], 'id').decode('utf8')
-	p1_prec = int(Redisdb.hget("asset1:" + pairs[0], 'precision'))
-	p2 = Redisdb.hget("asset1:" + pairs[1], 'id').decode('utf8')
-	p2_prec = int(Redisdb.hget("asset1:" + pairs[1], 'precision'))
+	p1 = Assets_name[pairs[0]]
+	p2 = Assets_name[pairs[1]]
 	rtn = Bitshares.rpc.get_limit_orders(p1, p2, 5000)
 
 	dat = []
 	for pos in rtn:
 		if p1 == pos['sell_price']['quote']['asset_id']:  # buy
-			amount_base = int(pos['sell_price']['base']['amount']) / 10 ** p2_prec
-			amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** p1_prec
-			price = round(amount_base / amount_quote, p2_prec)
-			total = round(amount_quote * price, p2_prec)
+			amount_base = int(pos['sell_price']['base']['amount']) / 10 ** Assets[p2][1]
+			amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** Assets[p1][1]
+			price = round(amount_base / amount_quote, Assets[p2][1])
+			total = round(amount_quote * price, Assets[p2][1])
 			op = 'buy'
 		else:  # sell
-			amount_base = int(pos['sell_price']['base']['amount']) / 10 ** p1_prec
-			amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** p2_prec
-			price = round(amount_quote / amount_base, p2_prec)
-			total = round(amount_base*price, p2_prec)
+			amount_base = int(pos['sell_price']['base']['amount']) / 10 ** Assets[p1][1]
+			amount_quote = int(pos['sell_price']['quote']['amount']) / 10 ** Assets[p2][1]
+			price = round(amount_quote / amount_base, Assets[p2][1])
+			total = round(amount_base*price, Assets[p2][1])
 			op = 'sell'
 		dat.append([op, price, total])
 	buys = [x for x in dat if x[0]=='buy']
@@ -360,9 +320,11 @@ async def get_orderbook(data):
 
 
 async def open_positions():
+	global Assets
 	alist = await account_list()
 	if alist is None or len(alist) == 0:
 		return None
+	load_assets()
 
 	ob = {}
 	for account in alist:
@@ -377,14 +339,10 @@ async def open_positions():
 			for co in account_data['call_orders']:
 				quote = co['call_price']['quote']['asset_id']
 				base = co['call_price']['base']['asset_id']
-				quote_asset = [Redisdb.hget("asset2:" + quote, 'symbol').decode('utf8'),
-							   int(Redisdb.hget("asset2:" + quote, 'precision'))]
-				base_asset = [Redisdb.hget("asset2:" + base, 'symbol').decode('utf8'),
-							  int(Redisdb.hget("asset2:" + base, 'precision'))]
 				try:
-					amount_debt = round(int(co['debt']) / 10 ** quote_asset[1], quote_asset[1])
-					amount_collateral = round(int(co['collateral']) / 10 ** base_asset[1], base_asset[1])
-					call_orders.append([account[0], quote_asset[0], amount_debt, base_asset[0], amount_collateral])
+					amount_debt = round(int(co['debt']) / 10 ** Assets[quote][1], Assets[quote][1])
+					amount_collateral = round(int(co['collateral']) / 10 ** Assets[base][1], Assets[base][1])
+					call_orders.append([account[0], Assets[quote][0], amount_debt, Assets[base][0], amount_collateral])
 				except Exception as err:
 					print(err.__repr__())
 			if len(call_orders) > 0:
@@ -395,32 +353,26 @@ async def open_positions():
 		for lo in account_data['limit_orders']:
 			quote = lo['sell_price']['quote']['asset_id']
 			base = lo['sell_price']['base']['asset_id']
-			if Redisdb.hget("asset2:" + quote, 'symbol') is None:
-				break
-			quote_asset = [Redisdb.hget("asset2:" + quote, 'symbol').decode('utf8'),
-						   int(Redisdb.hget("asset2:" + quote, 'precision'))]
-			base_asset = [Redisdb.hget("asset2:" + base, 'symbol').decode('utf8'),
-						  int(Redisdb.hget("asset2:" + base, 'precision'))]
 			date = arrow.get(lo['expiration']).shift(years=-5).isoformat()
 			try:
-				amount_quote = round(int(lo['sell_price']['quote']['amount']) / 10 ** quote_asset[1],
-									 quote_asset[1])
-				amount_base = round(int(lo['sell_price']['base']['amount']) / 10 ** base_asset[1], base_asset[1])
+				amount_quote = round(int(lo['sell_price']['quote']['amount']) / 10 ** Assets[quote][1],
+									 Assets[quote][1])
+				amount_base = round(int(lo['sell_price']['base']['amount']) / 10 ** Assets[base][1], Assets[base][1])
 			except Exception as err:
 				print(err.__repr__())
-			if base_asset[0] in base_coins:  # buy
-				price = round(amount_base / amount_quote, base_asset[1])
-				total = round(amount_quote * price, base_asset[1])
-				print("buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, date)
+			if Assets[base][0] in base_coins:  # buy
+				price = round(amount_base / amount_quote, Assets[base][1])
+				total = round(amount_quote * price, Assets[base][1])
+				print("buy", Assets[quote][0], amount_quote, Assets[base][0], amount_base, price, date)
 				#           0       1               2                   3           4       5       6       7       8               9           10
-				ob[account[0]].append(["buy", quote_asset[0], amount_quote, base_asset[0], amount_base, price, total, date,
-						   quote_asset[1], base_asset[1], lo['id']])
+				ob[account[0]].append(["buy", Assets[quote][0], amount_quote, Assets[base][0], amount_base, price, total, date,
+									   Assets[quote][1], Assets[base][1], lo['id']])
 			else:
-				price = round(amount_quote / amount_base, base_asset[1])
-				total = round(amount_base * price, base_asset[1])
-				print("sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, date)
-				ob[account[0]].append(["sell", base_asset[0], amount_base, quote_asset[0], amount_quote, price, total, date,
-						   base_asset[1], quote_asset[1], lo['id']])
+				price = round(amount_quote / amount_base, Assets[base][1])
+				total = round(amount_base * price, Assets[base][1])
+				print("sell", Assets[base][0], amount_base, Assets[quote][0], amount_quote, price, date)
+				ob[account[0]].append(["sell", Assets[base][0], amount_base, Assets[quote][0], amount_quote, price, total, date,
+									   Assets[base][1], Assets[quote][1], lo['id']])
 
 	# Open positions are part of balance
 	if Redisdb.get("balances_openpos") is None or True:
@@ -447,62 +399,6 @@ async def open_positions():
 	return ob
 
 
-
-#TODO: replaced by market_data.py
-async def get_market_trades_delete(data):
-	mkt, date_from, date_to = (data['market'], data['date_from'], data['date_to'])
-	pairs = mkt.split("/")
-	quote = Redisdb.hget("asset1:" + pairs[0], 'id').decode('utf8')  # quote
-	quote_prec = int(Redisdb.hget("asset1:" + pairs[0], 'precision'))
-	base = Redisdb.hget("asset1:" + pairs[1], 'id').decode('utf8')  # base
-	base_prec = int(Redisdb.hget("asset1:" + pairs[1], 'precision'))
-
-	date_end = arrow.utcnow()
-	date_init = date_end.shift(months=-1)
-	print(mkt, date_init, date_end)
-	movs = []
-	while True:
-		th = Bitshares.rpc.get_market_history(base, quote, 3600, date_init.isoformat(), date_end.isoformat(), api_id='history')
-		if len(th) == 0:
-			return
-		th.sort(key=lambda x: x['key']['open'])
-		for t in th:
-			dat = {}
-			try:
-				dat['open'] = round(
-					(float(t['open_base']) / 10 ** base_prec) / (float(t['open_quote']) / 10 ** quote_prec),
-					base_prec)
-				if t['close_quote'] == 0:
-					dat['close'] = dat['open']
-				else:
-					dat['close'] = round((float(t['close_base']) / 10 ** base_prec) / (float(t['close_quote']) / 10 ** quote_prec), base_prec)
-				if t['high_quote'] == 0:
-					if dat['open'] > dat['close']:
-						dat['high'] = dat['open']
-					else:
-						dat['high'] = dat['close']
-				else:
-					dat['high'] = round((float(t['high_base'])/10**base_prec) / (float(t['high_quote'])/10**quote_prec), base_prec)
-				if t['low_quote'] == 1:
-					if dat['open'] < dat['close']:
-						dat['low'] = dat['open']
-					else:
-						dat['low'] = dat['close']
-				else:
-					dat['low'] = round((float(t['low_base'])/10**base_prec) / (float(t['low_quote'])/10**quote_prec), base_prec)
-				dat['volume'] = round(float(t['base_volume'])/10**base_prec, base_prec)
-				dat['date'] = t['key']['open']
-				movs.append([dat['date'], dat['open'], dat['close'], dat['low'], dat['high'], dat['volume']])
-			except Exception as err:
-				print("error", err.__repr__())
-				print(t['high_base'], t['high_quote'], t['low_base'], t['low_quote'])
-				continue
-		if len(th) < 200:
-			break
-		date_init = arrow.get(th[-1]['key']['open']).shift(seconds=+0.01)
-		print("  ", date_init, date_end)
-
-	return movs
 
 
 def order_delete(id, conn, account):
