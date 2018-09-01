@@ -168,17 +168,31 @@ class graph_simple:
 			"responsive": True,
 			"animation": False,
 			"series":
-				[{"id": "b",
-					"name": "5min", "data": [x[1] for x in dat if x[1] is not None],
+				[{"id": "s1",
+					"name": "5min", "data": [x[1] for x in dat],
 				  	"smooth": False,
-						"type": 'line', "showSymbol": False
+						"type": 'line', "showSymbol": False,
+				  	"lineStyle": { "normal": { "color": '#FDA', "width": 2}},
 				},
-				{"id": "s",
-					"name": "1h", "data": [x[2] for x in dat if x[2] is not None],
+				{"id": "s2",
+					"name": "30min", "data": [x[2] for x in dat],
 					 "smooth": False,
-					 "type": 'line', "showSymbol": False
-				}],
-			"itemStyle": {"normal": {"color": '#999'}}
+				 "type": 'line', "showSymbol": False,
+				 "lineStyle": {"normal": {"color": '#FC0', "width": 2}},
+				 },
+			   {"id": "s3",
+				"name": "1h", "data": [x[3] for x in dat],
+				"smooth": False,
+				"type": 'line', "showSymbol": False,
+				"lineStyle": {"normal": {"color": '#C83', "width": 2}},
+				},
+				{"id": "s4",
+				 "name": "4h", "data": [x[4] for x in dat],
+				 "smooth": False,
+				 "type": 'line', "showSymbol": False,
+				 "lineStyle": {"normal": {"color": '#760', "width": 2}},
+				 }],
+		"itemStyle": {"normal": {"color": '#999'}}
 		})
 
 

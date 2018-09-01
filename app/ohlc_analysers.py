@@ -194,7 +194,7 @@ def feed_wavetrend(module, range, pairs, MDF):
 		series = []
 		for tl in ts:
 			obj.ohlc(timelapse=tl).wavetrend()
-			s = obj.df_ohlc.wt
+			s = obj.df_ohlc.wt.apply(lambda x: round(x, 0))
 			s.name = s.name + "_" + tl
 			series.append(s)
 		series.append(obj.df_ohlc.priceclose)

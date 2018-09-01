@@ -55,7 +55,7 @@ def chart3(pair):
 	jq("#echart3").show()
 	ograph = window.echarts.init(document.getElementById("echart3"))
 	og = w_mod_graphs.SeriesSimple(ograph)
-	og.title = pair + " series"
+	og.title = pair + " wavetrends"
 	og.market = pair
 	og.load_data(ChartData_analisis1[pair])
 
@@ -134,6 +134,8 @@ def incoming_data(data):
 
 	elif 'analysis_wavetrend' in data:
 		print("analysis")
+		for d in data['analysis_wavetrend']['data']:
+			print(d[1], d[2], d[3], d[4])
 		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
 		chart3(data['analysis_wavetrend']['market'])
 
