@@ -130,6 +130,7 @@ class graph_simple:
 		self.data = None
 		self.limits_x = None
 		self.limits_y = None
+		self.hard_limits_y = None
 		self.zoom_back = []
 		self.callbacks = {}
 		self.title = ''
@@ -146,13 +147,19 @@ class graph_simple:
 		print("graph loaddata", dat[:10])
 		self.limits_x = [dat[0][0], dat[-1][0]]
 
-		self.limits_y = [min(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None]),
-						 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
+		if self.hard_limits_y is not None:
+			self.limits_y = self.hard_limits_y
+		else:
+			self.limits_y = [min(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None]),
+							 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
 
 		print(dat[0], dat[-1])
 		if self.title != "":
 			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
 
+		if "stoch" in self.title:
+			for d in dat:
+				print(d[0], d[1], d[2])
 		self.chart1.setOption({"tooltip": {"trigger": 'axis',"axisPointer": {"type": 'cross'}},
     							"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"xAxis": {"type": 'category',
@@ -160,7 +167,7 @@ class graph_simple:
 					  "data": [x[0] for x in dat]},
 			"yAxis": {"type": "value", "axisPointer": {"snap": True},
 					  	"scale": True, "splitArea": {"show": False},
-					  "min": -400, "max": 400,
+					  "min": self.limits_y[0], "max": self.limits_y[1],
 					  "axisLabel": {'show': True, 'color': "#ececec"},
 					   "splitLine": {"show": True, "lineStyle": {"color": "#555"}},
 						"axisLine": {"show": False, "lineStyle": {"color": '#999', "width": 0.5}},
@@ -172,7 +179,7 @@ class graph_simple:
 					"name": "5min", "data": [x[1] for x in dat],
 				  	"smooth": False,
 						"type": 'line', "showSymbol": False,
-				  	"lineStyle": { "normal": { "color": '#FDA', "width": 2}},
+				  	"lineStyle": { "normal": { "color": '#FDA', "width": 1}},
 				},
 				{"id": "s2",
 					"name": "30min", "data": [x[2] for x in dat],
@@ -185,12 +192,6 @@ class graph_simple:
 				"smooth": False,
 				"type": 'line', "showSymbol": False,
 				"lineStyle": {"normal": {"color": '#C83', "width": 2}},
-				},
-				{"id": "s4",
-				 "name": "4h", "data": [x[4] for x in dat],
-				 "smooth": False,
-				 "type": 'line', "showSymbol": False,
-				 "lineStyle": {"normal": {"color": '#760', "width": 2}},
 				 }],
 		"itemStyle": {"normal": {"color": '#999'}}
 		})

@@ -133,7 +133,10 @@ class Operations_listener():
 		ohlc_analysers.last_trades(module=Active_module, range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 
 	async def analysis_wavetrend(self, data):
-		ohlc_analysers.feed_wavetrend(module=Active_module, range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
+		ohlc_analysers.feed_wavetrend(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
+
+	async def analysis_stoch_rsi(self, data):
+		ohlc_analysers.feed_stoch_rsi(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 
 	async def account_list(self, dummy):
 		accs = accounts.account_list()

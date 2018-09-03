@@ -57,7 +57,18 @@ def chart3(pair):
 	og = w_mod_graphs.SeriesSimple(ograph)
 	og.title = pair + " wavetrends"
 	og.market = pair
+	og.hard_limits_y = [-80, 80]
 	og.load_data(ChartData_analisis1[pair])
+
+
+def chart4(pair):
+	jq("#echart4").show()
+	ograph = window.echarts.init(document.getElementById("echart4"))
+	og = w_mod_graphs.SeriesSimple(ograph)
+	og.title = pair + " stoch-rsi"
+	og.market = pair
+	og.hard_limits_y = [0, 100]
+	og.load_data(ChartData_analisis2[pair])
 
 
 def on_tabshown(ev):
@@ -74,6 +85,12 @@ def on_tabshown(ev):
 	else:
 		chart3(market)
 		jq("#echart3").show()
+
+	if market not in ChartData_analisis1:
+		Ws_comm.send({'call': 'analysis_stoch_rsi', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart4(market)
+		jq("#echart4").show()
 
 	if market not in ChartData_trades:
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
@@ -115,7 +132,6 @@ def incoming_data(data):
 			for l in dat[:3]:
 				Ws_comm.send({'call': 'get_orderbook', 'market': l[0], 'module': Module_name, 'operation': 'enqueue_bg'})
 	elif 'orderbook' in data:
-		print('a2')
 		market = data['orderbook']['market']
 		maxv = data['orderbook']['data'][0][3]
 		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
@@ -133,9 +149,10 @@ def incoming_data(data):
 		og.load_data(data['market_trades']['data'])
 
 	elif 'analysis_wavetrend' in data:
-		print("analysis")
-		for d in data['analysis_wavetrend']['data']:
-			print(d[1], d[2], d[3], d[4])
 		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
 		chart3(data['analysis_wavetrend']['market'])
+
+	elif 'analysis_stoch_rsi' in data:
+		ChartData_analisis2[data['analysis_stoch_rsi']['market']] = data['analysis_stoch_rsi']['data']
+		chart4(data['analysis_stoch_rsi']['market'])
 

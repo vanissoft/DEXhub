@@ -138,6 +138,9 @@ class Analyze(Common):
 				self._add_column_to_ohlc("rsi", ti.rsi(self.df_ohlc.priceclose.values, kp))
 			v = self.df_ohlc.rsi.dropna().values
 			self._add_column_to_ohlc(name, ti.stoch(v, v, v, kp, ksp, d))
+			return True
+		else:
+			return False
 
 	def cci(self, name='cci', period=20):
 		if len(self.df_ohlc) > period:
@@ -168,6 +171,7 @@ class Analyze(Common):
 		tci = ti.ema(ci, 21)
 		wt1 = _zero_padding(tci, len(ap))
 		self._add_column_to_ohlc(name, wt1)
+		return True
 
 
 def last_trades(module, range, pairs, MDF):
@@ -189,84 +193,69 @@ def last_trades(module, range, pairs, MDF):
 
 def feed_wavetrend(module, range, pairs, MDF):
 
-	def response2(obj, pair, data):
+	def response(obj, pair, data):
 		ts = ['5min', '30min', '1h', '4h']
 		series = []
+		nseries = []
 		for tl in ts:
-			obj.ohlc(timelapse=tl).wavetrend()
-			s = obj.df_ohlc.wt.apply(lambda x: round(x, 0))
-			s.name = s.name + "_" + tl
-			series.append(s)
+			if obj.ohlc(timelapse=tl).wavetrend():
+				s = obj.df_ohlc.wt.apply(lambda x: round(x, 0))
+				s.name = s.name + "_" + tl
+				series.append(s)
+			else:
+				nseries.append(tl)
+		for ns in nseries:
+			ts.remove(ns)
 		series.append(obj.df_ohlc.priceclose)
 		df = pd.concat(series, axis=1)
 		for col in df.columns:
 			df[col] = df[col].interpolate(method='linear')
 		df['time'] = df.index
-		g = ['wt_{}'.format(x) for x in ts]
+		#g = ['wt_{}'.format(x) for x in ts]
 		#df[-120:][g].plot()
-		rdates = obj.df_ohlc['time'].dt.to_pydatetime().tolist()
+		rdates = df['time'].dt.to_pydatetime().tolist()
 		rdates = [x.isoformat() for x in rdates]
-		movs = [x for x in zip(rdates, *[df['wt_'+x].tolist() for x in ts])]
+		movs = [x for x in zip(rdates, *[df['wt_'+x].tolist() for x in ts])][int(len(rdates)/2):]
 		Redisdb.rpush("datafeed", json.dumps({'module': module,
 											  'analysis_wavetrend':
 												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
 
 
-	Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=pairs, MDF=MarketDataFeeder(), callback=response2)
+	Analyze(range=range, pairs=pairs, MDF=MarketDataFeeder(), callback=response)
 
 
 
-def test_stoch_rsi():
-	print("Starting")
-	def froga(data):
-		print("response")
+def feed_stoch_rsi(module, range, pairs, MDF):
 
-	a = Analyze(range=(arrow.get('2018-08-03'), arrow.get('2018-08-26')), pairs=['BTS/CNY'], MDF=MarketDataFeeder(), callback=froga)
-	ts = ['5min', '30min', '1h', '4h'][:-1]
-	series = []
-	for tl in ts:
-		a.ohlc(timelapse=tl).stoch_rsi()
-		s = a.df_ohlc.stoch_rsi
-		s.name = s.name+"_"+tl
-		series.append(s)
-	#series.append(a.df_ohlc.priceopen)
-	series.append(a.df_ohlc.priceclose)
-	df = pd.concat(series, axis=1)
-	for col in df.columns:
-		df[col] = df[col].interpolate(method='linear')
-	df['time'] = df.index
-	g = ['stoch_rsi_{}'.format(x) for x in ts]
-	#df['priceclose'].plot()
-	df[-20:][g].plot()
-
-	a.ohlc(timelapse='1h').wavetrend()
-	a.df_ohlc[['wt']].plot()
-
-	print()
-
-
-def test_wavetrend():
-	print("Starting")
-
-	def results(obj, pair, data):
+	def response(obj, pair, data):
 		ts = ['5min', '30min', '1h', '4h']
 		series = []
+		nseries = []
 		for tl in ts:
-			obj.ohlc(timelapse=tl).wavetrend()
-			s = obj.df_ohlc.wt
-			s.name = s.name + "_" + tl
-			series.append(s)
+			if obj.ohlc(timelapse=tl).stoch_rsi():
+				s = obj.df_ohlc.stoch_rsi
+				s.name = s.name + "_" + tl
+				series.append(s)
+			else:
+				nseries.append(tl)
+		for ns in nseries:
+			ts.remove(ns)
 		series.append(obj.df_ohlc.priceclose)
 		df = pd.concat(series, axis=1)
 		for col in df.columns:
 			df[col] = df[col].interpolate(method='linear')
 		df['time'] = df.index
-		g = ['wt_{}'.format(x) for x in ts]
-		df[-120:][g].plot()
+		#g = ['stoch_rsi_{}'.format(x) for x in ts]
+		#df[-20:][g].plot()
+		rdates = df['time'].dt.to_pydatetime().tolist()
+		rdates = [x.isoformat() for x in rdates]
+		movs = [x for x in zip(rdates, *[df['stoch_rsi_'+x].tolist() for x in ts])][int(len(rdates)/2):]
+		Redisdb.rpush("datafeed", json.dumps({'module': module,
+											  'analysis_stoch_rsi':
+												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
 
-	a = Analyze(range=[arrow.get('2018-08-03'), arrow.utcnow()], pairs=['BTS/CNY', 'OPEN.BTC/USD'], MDF=MarketDataFeeder(), callback=results)
+	Analyze(range=range, pairs=pairs, MDF=MarketDataFeeder(), callback=response)
 
-	print()
 
 
 def test_prophet():
@@ -295,7 +284,7 @@ if __name__ == "__main__":
 	print("Starting")
 	print("ok1")
 	#test_prophet()
-	feed_wavetrend()
+	test_stoch_rsi()
 	if False:
 		d = []
 		for i in (21,34,55,89,144,233):

@@ -284,6 +284,8 @@ class MarketDataFeeder:
 					if cls.Datastores_pair[pair]['df'] is not None:
 						df = cls.Datastores_pair[pair]['df'].rename(columns={'amount_baseamount_base': 'amount_base',
 																			 'amount_quoteamount_quote': 'amount_quote'})
+						df = df.loc[(df.index > req[1]['daterange'][0].isoformat())]
+						df = df.sort_index()
 						req[1]['callback'](pair, df)
 						# persistence. saving when request is fully served
 						df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/','_'))
