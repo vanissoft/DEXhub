@@ -26,4 +26,4 @@ Brython debugging is somewhat weird to bug hunting as the Python-Javascript conv
 Cheers.
 
 
-Screenshots in issue #49
+Screenshots in issue #49 (https://github.com/vanissoft/DEXhub/issues/49)
