@@ -62,12 +62,34 @@ def chart3(pair):
 
 
 def chart4(pair):
+	ograph = None
+	def graph_click(e):
+		nonlocal ograph
+		#TODO: unable to read event attributes
+		#print(e['click'])
+		#print(e.click)
+		#print(e.offsetX)
+		print(e.clientX, e.clientY)
+		if False:
+			print("e.data", e.data)
+			print("e.name", e.name)
+			print("component type", e.componentType)
+			print(e.value)
+			print(e.seriesName)
+		print("scroll left", document.body.scrollLeft, document.body.scrollTop)
+		#pos = self.objchart.chart1.convertFromPixel('grid', [params.offsetX, params.offsetY])
+		#pos = ograph.convertFromPixel('grid', [e.offsetX, e.offsetY])
+
+
 	jq("#echart4").show()
 	ograph = window.echarts.init(document.getElementById("echart4"))
 	og = w_mod_graphs.SeriesSimple(ograph)
 	og.title = pair + " stoch-rsi"
 	og.market = pair
 	og.hard_limits_y = [0, 100]
+	document.getElementById("echart4").addEventListener('mousemove', graph_click)
+	#ograph.on('click', graph_click)
+	#ograph.on('mousemove', graph_click)
 	og.load_data(ChartData_analisis2[pair])
 
 

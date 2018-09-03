@@ -91,6 +91,7 @@ class graph_orderbook:
 				[{"id": "b",
 					"name": "buy " + self.market, "data": self.buy_data,
 						"type": 'line', "showSymbol": False,
+				  		"lineStyle": {"color": 'rgba(100,200,100,1)'},
 						"areaStyle": { "normal": {"color": {"type": 'linear', "x": 0, "y": 0, "x2": 0, "y2": 1,
 									"colorStops": [{"offset": 0, "color": 'rgba(0,253,90, 1)'},
 													{"offset": 0.5, "color": 'rgba(0,253,90,0.4)'},
@@ -99,7 +100,8 @@ class graph_orderbook:
 				{"id": "s",
 					"name": "sell " + self.market, "data": self.sell_data,
 						"type": 'line', "showSymbol": False,
-						"areaStyle": { "normal": {"color": {"type": 'linear', "x": 0, "y": 0, "x2": 0, "y2": 1,
+						 "lineStyle": {"color": 'rgba(200,100,100,1)'},
+						 "areaStyle": { "normal": {"color": {"type": 'linear', "x": 0, "y": 0, "x2": 0, "y2": 1,
 									"colorStops": [{"offset": 0, "color": 'rgba(253,100,78,0.8)'},
 													{"offset": 0.5, "color": 'rgba(253,100,78,0.4)'},
 													{"offset": 1, "color": 'rgba(253,100,78,0)'}]}}}
