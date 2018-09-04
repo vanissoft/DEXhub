@@ -25,5 +25,18 @@ Brython debugging is somewhat weird to bug hunting as the Python-Javascript conv
 
 Cheers.
 
+# Screenshots
+![](https://user-images.githubusercontent.com/4522822/43274568-d3d9c134-90ff-11e8-961f-63946af6d3f3.png?raw=true "Balances")
 
-Screenshots in issue #49 (https://github.com/vanissoft/DEXhub/issues/49)
+![](https://user-images.githubusercontent.com/4522822/43274594-e0b3f992-90ff-11e8-943f-52bb2ebf8993.png?raw=true "Balances")
+
+![](https://user-images.githubusercontent.com/4522822/43274631-f1de0d70-90ff-11e8-983a-1723ff37ebeb.png?raw=true "Master Password")
+
+![](https://user-images.githubusercontent.com/4522822/43274657-09c42ab4-9100-11e8-8833-7acb18617a66.png?raw=true "Stats")
+
+![](https://user-images.githubusercontent.com/4522822/43274691-27a2777a-9100-11e8-8faa-c84d7a7e257e.png?raw=true "Charts")
+
+![](https://user-images.githubusercontent.com/4522822/44983418-6712f780-af79-11e8-8548-e104e718e2a1.png?raw=true "Charts")
+
+![](https://user-images.githubusercontent.com/4522822/45027315-5f1e8a80-b041-11e8-8930-37a92e89cf9e.gif?raw=true "Demo")
+
