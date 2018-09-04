@@ -20,9 +20,6 @@ class graph_orderbook:
 		self.buy_data = None
 		self.sell_data = None
 		self.q_callback = None
-		self.limits_x = None
-		self.limits_y = None
-		self.zoom_back = []
 		self.callbacks = {}
 		self.title = ''
 		self.orders = []
@@ -33,46 +30,16 @@ class graph_orderbook:
 		print("graph_orderbook init")
 
 
-	def zoom(self):
-		self.zoom_back.append([self.limits_x, self.limits_y])
-		left = self.limits_x[0] + ((self.buy_data[-1][0] - self.limits_x[0]) / 1.5)
-		right = self.limits_x[1] - ((self.limits_x[1] - self.sell_data[0][0]) / 1.5)
-		self.limits_x = [left, right]
-		self.limits_y = [0, int(self.limits_y[1]/3)]
-		self.chart1.setOption({
-			"xAxis": {"min": left, "max": right}})
-		self.chart1.setOption({
-			"yAxis": {"min": 0, "max": self.limits_y[1]}})
-
-	def zoom_reset(self):
-		if len(self.zoom_back) == 0:
-			return
-		else:
-			zb = self.zoom_back.pop()
-			if len(zb) == 0:
-				self.limits_x = None
-				self.limits_y = None
-			else:
-				self.limits_x = zb[0]
-				self.limits_y = zb[1]
-			self.chart1.setOption({
-				"xAxis": {"min": self.limits_x[0], "max": self.limits_x[1]},
-				"yAxis": {"min": 0, "max": self.limits_y[1]}})
-
 	def load_data(self, dat):
 		self.data = dat
 		self.buy_data = [[r[1], r[3]] for r in self.data if r[0]=='buy']
 		self.sell_data = [[r[1], r[3]] for r in self.data if r[0]=='sell']
-		self.limits_x = [min(self.data[0][1], self.data[-1][1]),
-							max(self.data[0][1], self.data[-1][1])]
-		self.limits_y = [0, max(self.data[0][3], self.data[-1][3])]
-		print("limits_y", self.limits_y)
 
 		if self.title != "":
 			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
-									"grid": {"show": False, 'borderColor': '#f00', "top": "30", "bottom": "20", "left": "10", "right": "15"}})
+									"grid": {"show": False, 'borderColor': '#f00', "top": "30", "left": "10", "right": "15"}})
 		else:
-			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "bottom": "20", "left": "10", "right": "15"}})
+			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "10", "right": "15"}})
 
 		self.chart1.setOption({
 			"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
@@ -81,10 +48,11 @@ class graph_orderbook:
 					"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
 					"axisTick": {"lineStyle": {"color": "#aaa"}}},
-			"yAxis": {"min": self.limits_y[0], "max": self.limits_y[1], "show": False,
+			"yAxis": {"show": False,
 					"splitLine": {"lineStyle": {"color": '#444', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
 					"axisTick": {"lineStyle": {"color": "#aca"}}},
+			"dataZoom": [{"type": "slider", "start": 5, "end": 70, "xAxisIndex": [0], "filterMode": 'filter'}],
 			"responsive": True,
 			"animation": False,
 			"series":
@@ -117,9 +85,10 @@ class graph_orderbook:
 					color = "#5baa25"
 				else:
 					color = "#f95155"
+				#TODO: replace second yAxis with a more suitable value
 				dat.append([{"name": "", "xAxis": o[1], "yAxis": 0, "symbol": "none",
 							"lineStyle": {"normal": {'type': 'solid', 'color': color}}},
-							{"name": "", "xAxis": o[1], "yAxis": self.limits_y[1] / 2, "symbol": "none"}])
+							{"name": "", "xAxis": o[1], "yAxis": 100, "symbol": "none"}])
 			self.chart1.setOption({"series": [{"id": "b", "markLine": {"silent": True, "animation": False, "data": dat}}]})
 
 
@@ -143,6 +112,15 @@ class graph_simple:
 		print("graph_simple init")
 
 
+	def tooltip(self, params, ticker, callback):
+		print("name  type   seriesname   value")
+		for p in params:
+			print(p.name, p.componentType, p.seriesName, p.value)
+		opt = self.chart1.getOption()
+		print(1, opt.axisPointer[0].value)
+		print(2, opt.xAxis[0].axisPointer.value)
+		print(2, opt.yAxis[0].axisPointer.value)
+
 
 	def load_data(self, dat):
 		self.data = dat
@@ -162,7 +140,7 @@ class graph_simple:
 		if "stoch" in self.title:
 			for d in dat:
 				print(d[0], d[1], d[2])
-		self.chart1.setOption({"tooltip": {"trigger": 'axis',"axisPointer": {"type": 'cross'}},
+		self.chart1.setOption({"tooltip": {"trigger": 'axis',"axisPointer": {"type": 'cross'}, "formatter": self.tooltip},
     							"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"xAxis": {"type": 'category',
 					  "axisLine": {"show": True, "lineStyle": {"color": '#aaa', "width": 0.5}},
