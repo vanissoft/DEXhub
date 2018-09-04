@@ -259,7 +259,8 @@ def feed_stoch_rsi(module, range, pairs, MDF):
 
 
 def test_prophet():
-	from fbprophet import Prophet
+	#Only testing
+	#from fbprophet import Prophet
 	a = Analyze(range=(arrow.get('2018-07-01'), arrow.get('2018-08-15')))
 	df = a.ohlc(timelapse="1h").df_ohlc
 	df['ds'] = df.index

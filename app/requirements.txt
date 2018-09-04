@@ -1,0 +1,13 @@
+arrow=>0.12.1
+bitshares=>0.1.19
+cryptography=>2.3.1
+fastparquet=>0.1.5
+matplotlib=>2.2.3
+pandas=>0.23.4
+redis=>2.10.6
+requests=>2.18.4
+sanic=>0.7.0
+sanic-compress=>0.1.1
+tulipy=>0.2.1
+websocket-client==0.50.0
+websockets==5.0
