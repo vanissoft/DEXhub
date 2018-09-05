@@ -19,8 +19,6 @@ class graph_orderbook:
 		self.data_cb = None
 		self.buy_data = None
 		self.sell_data = None
-		self.q_callback = None
-		self.callbacks = {}
 		self.title = ''
 		self.orders = []
 		self.setoption_data = None
@@ -95,17 +93,17 @@ class graph_orderbook:
 
 class graph_simple:
 
-	def __init__(self, objchart):
+	def __init__(self, name, objchart, axis_cb=None):
+		self.name = name
 		self.chart1 = objchart
 		self.market = ''
 		self.data = None
 		self.limits_x = None
 		self.limits_y = None
 		self.hard_limits_y = None
-		self.zoom_back = []
-		self.callbacks = {}
 		self.title = ''
 		self.setoption_data = None
+		self.axispointer_cb = axis_cb
 		self.init()
 
 	def init(self):
@@ -113,13 +111,12 @@ class graph_simple:
 
 
 	def tooltip(self, params, ticker, callback):
-		print("name  type   seriesname   value")
-		for p in params:
-			print(p.name, p.componentType, p.seriesName, p.value)
-		opt = self.chart1.getOption()
-		print(1, opt.axisPointer[0].value)
-		print(2, opt.xAxis[0].axisPointer.value)
-		print(2, opt.yAxis[0].axisPointer.value)
+		#print("name  type   seriesname   value")
+		#for p in params:
+		#	print(p.name, p.componentType, p.seriesName, p.value)
+		print(self.axispointer_cb)
+		if self.axispointer_cb is not None:
+			self.axispointer_cb(self.name, self.chart1, self.chart1.getOption())
 
 
 	def load_data(self, dat):
@@ -133,15 +130,12 @@ class graph_simple:
 			self.limits_y = [min(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None]),
 							 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
 
-		print(dat[0], dat[-1])
 		if self.title != "":
 			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
 
-		if "stoch" in self.title:
-			for d in dat:
-				print(d[0], d[1], d[2])
-		self.chart1.setOption({"tooltip": {"trigger": 'axis',"axisPointer": {"type": 'cross'}, "formatter": self.tooltip},
-    							"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
+		self.chart1.setOption({"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross', "show": True}, "formatter": self.tooltip, "alwaysShowContent": True}})
+
+		self.chart1.setOption({"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"xAxis": {"type": 'category',
 					  "axisLine": {"show": True, "lineStyle": {"color": '#aaa', "width": 0.5}},
 					  "data": [x[0] for x in dat]},
@@ -186,11 +180,13 @@ class OrderBook1(graph_orderbook):
 
 
 
-class MarketTrades1(graph_orderbook):
+class MarketTrades1(graph_simple):
 	#["2004-01-02",10452.74,10409.85,10367.41,10554.96,168890000]
 	#date, open, close, lowest, highest
-	def __init__(self, objchart):
-		super().__init__(objchart)
+
+	def __init__(self, name, objchart, axis_cb=None):
+		super().__init__(name, objchart, axis_cb)
+		self.orders = []
 
 	def load_data(self, dat):
 		print("load_data")
@@ -201,7 +197,7 @@ class MarketTrades1(graph_orderbook):
 		print("cat data", self.data['category_data'][:2])
 		print("lenght", len(self.data['data']))
 
-		gdata = {"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
+		gdata = {"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross', "show": True}, "formatter": self.tooltip, "alwaysShowContent": True},
 			"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"axisPointer": {'link': {'xAxisIndex': 'all'}, 'label': {'backgroundColor': '#ca5'}},
 			"yAxis": [{"scale": True, "splitArea": {"show": False}, "axisLabel": {'show': True, 'color': "#ececec"},
@@ -258,8 +254,8 @@ class MarketTrades1(graph_orderbook):
 
 class SeriesSimple(graph_simple):
 
-	def __init__(self, objchart):
-		super().__init__(objchart)
+	def __init__(self, name, objchart, axis_cb=None):
+		super().__init__(name, objchart, axis_cb)
 
 
 

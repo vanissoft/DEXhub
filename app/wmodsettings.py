@@ -73,12 +73,13 @@ def click_baseprio(ev):
 
 
 def click_baseprio_reset(ev):
-	global BasePrio, BasePrioButton
-	global LastBasePrio
-	for b in BasePrioButton:
-		BasePrio[BasePrioButton[b]] = 0
-		document[b].innerHTML = '?'
+	global BasePrio, BasePrioButton, LastBasePrio
 	LastBasePrio = 0
+	for b in BasePrioButton:
+		if b in BasePrioButton and BasePrioButton[b] in BasePrio:
+			BasePrio[BasePrioButton[b]] = 0
+		if b in document:
+			document[b].innerHTML = '?'
 
 def click_baseprio_resetorder(ev):
 	Ws_comm.send({'call': 'settings_prefs_bases', 'orderbyops': 0, 'module': "settings", 'operation': 'enqueue'})

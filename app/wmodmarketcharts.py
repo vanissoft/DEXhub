@@ -25,6 +25,7 @@ Objcharts = {}
 MarketTab = {}
 MarketTab2 = {}
 ChartData_trades = {}
+ChartData_ob = {}
 ChartData_analisis1 = {}
 ChartData_analisis2 = {}
 Order_pos = {}
@@ -42,6 +43,36 @@ def init(comm):
 	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
 
 
+def axis_sync(name, ochart, opts):
+	def nearest(list1, txt):
+		for l in enumerate(list1):
+			if l[1] >= txt:
+				return l[0]
+		return len(list1)-1
+	print(name)
+	print(1, opts.axisPointer[0].value)
+	print(2, opts.xAxis[0].axisPointer.value)
+	print(2, opts.yAxis[0].axisPointer.value)
+	print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
+	date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
+	def update_axis(name, date):
+		opt = Objcharts[name].getOption()
+		opt.xAxis[0].axisPointer.value = nearest(opt.xAxis[0].data, date)
+		opt.xAxis[0].axisPointer.show = True
+		opt.xAxis[0].axisPointer.status = True
+		Objcharts[name].setOption({"xAxis": opt.xAxis})
+
+	if name == 'wavetrends':
+		update_axis('chart2', date)
+		update_axis('chart4', date)
+	elif name == 'stoch-rsi':
+		update_axis('chart2', date)
+		update_axis('chart3', date)
+	elif name == 'ohlc':
+		update_axis('chart3', date)
+		update_axis('chart4', date)
+
+
 def chart1(pair):
 	jq("#echart1").show()
 	ograph = window.echarts.init(document.getElementById("echart1"))
@@ -49,12 +80,22 @@ def chart1(pair):
 	og.title = pair + " orderbook"
 	og.market = pair
 	#og.orders = Order_pos[pair]
+	og.load_data(ChartData_ob[pair])
+
+def chart2(pair):
+	Objcharts['chart2'] = window.echarts.init(document.getElementById("echart2"))
+	og = w_mod_graphs.MarketTrades1('ohlc', Objcharts['chart2'], axis_sync)
+	og.title = pair + " trades"
+	og.market = pair
+	if pair in Order_pos:
+		og.orders = Order_pos[pair]
 	og.load_data(ChartData_trades[pair])
 
 def chart3(pair):
 	jq("#echart3").show()
-	ograph = window.echarts.init(document.getElementById("echart3"))
-	og = w_mod_graphs.SeriesSimple(ograph)
+	Objcharts['chart3'] = window.echarts.init(document.getElementById("echart3"))
+	og = w_mod_graphs.SeriesSimple('wavetrends', Objcharts['chart3'], axis_sync)
+	og.driven = False
 	og.title = pair + " wavetrends"
 	og.market = pair
 	og.hard_limits_y = [-80, 80]
@@ -63,8 +104,9 @@ def chart3(pair):
 
 def chart4(pair):
 	jq("#echart4").show()
-	ograph = window.echarts.init(document.getElementById("echart4"))
-	og = w_mod_graphs.SeriesSimple(ograph)
+	Objcharts['chart4'] = window.echarts.init(document.getElementById("echart4"))
+	og = w_mod_graphs.SeriesSimple('stoch-rsi', Objcharts['chart4'], axis_sync)
+	og.driven = False
 	og.title = pair + " stoch-rsi"
 	og.market = pair
 	og.hard_limits_y = [0, 100]
@@ -131,22 +173,17 @@ def incoming_data(data):
 		if False:
 			for l in dat[:3]:
 				Ws_comm.send({'call': 'get_orderbook', 'market': l[0], 'module': Module_name, 'operation': 'enqueue_bg'})
+
 	elif 'orderbook' in data:
 		market = data['orderbook']['market']
 		maxv = data['orderbook']['data'][0][3]
 		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
-		ChartData_trades[market] = data['orderbook']['data']
+		ChartData_ob[market] = data['orderbook']['data']
 		chart1(market)
 
 	elif 'market_trades' in data:
-		market = data['market_trades']['market']
-		ograph = window.echarts.init(document.getElementById("echart2"))
-		og = w_mod_graphs.MarketTrades1(ograph)
-		og.title = market + " trades"
-		og.market = market
-		if market in Order_pos:
-			og.orders = Order_pos[market]
-		og.load_data(data['market_trades']['data'])
+		ChartData_trades[data['market_trades']['market']] = data['market_trades']['data']
+		chart2(data['market_trades']['market'])
 
 	elif 'analysis_wavetrend' in data:
 		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
