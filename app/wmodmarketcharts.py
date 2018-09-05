@@ -32,15 +32,33 @@ Order_pos = {}
 Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
 Ws_comm = None
-
-
-#TODO: query for more active pairs
+Last_Pair = ''
 
 
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
+	document["bRefresh"].bind('click', refresh)
+	document["bRefreshAll"].bind('click', refresh_all)
+
+def refresh(ev):
+	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_ob
+	print("refresh")
+	if Last_Pair != '':
+		del ChartData_trades[Last_Pair]
+		del ChartData_analisis1[Last_Pair]
+		del ChartData_analisis2[Last_Pair]
+		del ChartData_ob[Last_Pair]
+		ask_data(Last_Pair)
+
+def refresh_all(ev):
+	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_ob
+	print("refresh all")
+	ChartData_trades = {}
+	ChartData_analisis1 = {}
+	ChartData_analisis2 = {}
+	ChartData_ob = {}
 
 
 def axis_sync(name, ochart, opts):
@@ -113,14 +131,14 @@ def chart4(pair):
 	og.load_data(ChartData_analisis2[pair])
 
 
-def on_tabshown(ev):
-	id = int(ev.target.hash.split("-")[1])
-
-	market = MarketTab2[id]
-	Ws_comm.send({'call': 'get_last_trades', 'market': market,
-		'date_from': (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(),
-		'date_to': datetime.datetime.now().isoformat(),
-		'module': Module_name, 'operation': 'enqueue_bg'})
+def ask_data(market):
+	if market not in ChartData_trades:
+		Ws_comm.send({'call': 'get_last_trades', 'market': market,
+			'date_from': (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(),
+			'date_to': datetime.datetime.now().isoformat(),
+			'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart2(market)
 
 	if market not in ChartData_analisis1:
 		Ws_comm.send({'call': 'analysis_wavetrend', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
@@ -128,17 +146,28 @@ def on_tabshown(ev):
 		chart3(market)
 		jq("#echart3").show()
 
-	if market not in ChartData_analisis1:
+	if market not in ChartData_analisis2:
 		Ws_comm.send({'call': 'analysis_stoch_rsi', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		chart4(market)
 		jq("#echart4").show()
 
-	if market not in ChartData_trades:
+	if market not in ChartData_ob:
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		chart1(market)
-		jq("#echart2").show()
+		jq("#echart1").show()
+
+
+
+def on_tabshown(ev):
+	global Last_Pair
+
+	id = int(ev.target.hash.split("-")[1])
+
+	market = MarketTab2[id]
+	Last_Pair = market
+	ask_data(market)
 
 
 
@@ -182,14 +211,17 @@ def incoming_data(data):
 		chart1(market)
 
 	elif 'market_trades' in data:
+		Last_Pair = data['market_trades']['market']
 		ChartData_trades[data['market_trades']['market']] = data['market_trades']['data']
 		chart2(data['market_trades']['market'])
 
 	elif 'analysis_wavetrend' in data:
+		Last_Pair = data['analysis_wavetrend']['market']
 		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
 		chart3(data['analysis_wavetrend']['market'])
 
 	elif 'analysis_stoch_rsi' in data:
+		Last_Pair = data['analysis_stoch_rsi']['market']
 		ChartData_analisis2[data['analysis_stoch_rsi']['market']] = data['analysis_stoch_rsi']['data']
 		chart4(data['analysis_stoch_rsi']['market'])
 
