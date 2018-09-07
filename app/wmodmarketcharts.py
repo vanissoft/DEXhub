@@ -153,7 +153,7 @@ def chart5(pair):
 	og.driven = False
 	og.title = pair + " rsi"
 	og.market = pair
-	og.hard_limits_y = [0, 100]
+	og.hard_limits_y = [20, 80]
 	og.load_data(ChartData_analisis3[pair])
 
 

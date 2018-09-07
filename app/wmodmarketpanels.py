@@ -42,10 +42,11 @@ def drag_receive(ev, ui):
 def query_make(mkt, chart_type):
 	global Comm
 	if chart_type == "trades":
-		Comm.send({'call': 'get_market_trades', 'market': mkt,
-			'date_from': (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(),
+		Comm.send({'call': 'get_last_trades', 'market': mkt,
+			'date_from': (datetime.datetime.now() - datetime.timedelta(days=15)).isoformat(),
 			'date_to': datetime.datetime.now().isoformat(),
 			'module': Module_name, 'operation': 'enqueue_bg'})
+
 	elif chart_type == "depth":
 		Comm.send({'call': 'get_orderbook', 'market': mkt, 'module': Module_name, 'operation': 'enqueue_bg'})
 
@@ -184,12 +185,13 @@ def incoming_data(data):
 
 	elif 'market_trades' in data:
 		market = data['market_trades']['market']
+		print('market_trades', )
 		for p in Panels:
 			if Panels[p]['market'] == market and Panels[p]['chart_type'] == "trades":
 				jq("#loading_" + p).hide()
 				jq("#echart_" + p).show()
 				obj = window.echarts.init(document.getElementById("echart_"+p))
-				og = w_mod_graphs.MarketTrades1(obj)
+				og = w_mod_graphs.MarketTrades1('ohlc', obj, None)
 				og.market = market
 				Panels[p]['echart_obj'] = obj
 				Panels[p]['wmgraph_obj'] = og
