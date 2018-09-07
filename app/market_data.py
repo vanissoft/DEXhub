@@ -455,7 +455,11 @@ class Stats:
 		d1['asset'] = d1.index
 		d2['asset'] = d2.index
 		d3 = pd.concat([d1, d2], axis=1)
-		d3 = d3.fillna(0)
+		#TODO: expurious error about categories
+		try:
+			d3 = d3.fillna(0)
+		except Exception as e:
+			print(e)
 		d3['ops'] = d3.pays_asset + d3.receives_asset
 		d3['volume'] = d3.pays_amount + d3.receives_amount
 		d3.sort_values('ops', ascending=False, inplace=True)

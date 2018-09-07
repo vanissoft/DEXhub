@@ -135,6 +135,12 @@ class Operations_listener():
 	async def analysis_wavetrend(self, data):
 		ohlc_analysers.feed_wavetrend(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 
+	async def analysis_rsi(self, data):
+		ohlc_analysers.feed_rsi(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
+
+	async def analysis_cci(self, data):
+		ohlc_analysers.feed_cci(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
+
 	async def analysis_stoch_rsi(self, data):
 		ohlc_analysers.feed_stoch_rsi(module=Active_module, range=(arrow.utcnow().shift(days=-8), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 

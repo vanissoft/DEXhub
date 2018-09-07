@@ -28,6 +28,8 @@ ChartData_trades = {}
 ChartData_ob = {}
 ChartData_analisis1 = {}
 ChartData_analisis2 = {}
+ChartData_analisis3 = {}
+ChartData_analisis4 = {}
 Order_pos = {}
 Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
@@ -49,15 +51,19 @@ def refresh(ev):
 		del ChartData_trades[Last_Pair]
 		del ChartData_analisis1[Last_Pair]
 		del ChartData_analisis2[Last_Pair]
+		del ChartData_analisis3[Last_Pair]
+		del ChartData_analisis4[Last_Pair]
 		del ChartData_ob[Last_Pair]
 		ask_data(Last_Pair)
 
 def refresh_all(ev):
-	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_ob
+	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_analisis3, ChartData_analisis4, ChartData_ob
 	print("refresh all")
 	ChartData_trades = {}
 	ChartData_analisis1 = {}
 	ChartData_analisis2 = {}
+	ChartData_analisis3 = {}
+	ChartData_analisis4 = {}
 	ChartData_ob = {}
 
 
@@ -74,21 +80,30 @@ def axis_sync(name, ochart, opts):
 	print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
 	date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
 	def update_axis(name, date):
+		if name not in Objcharts:
+			return
 		opt = Objcharts[name].getOption()
 		opt.xAxis[0].axisPointer.value = nearest(opt.xAxis[0].data, date)
 		opt.xAxis[0].axisPointer.show = True
 		opt.xAxis[0].axisPointer.status = True
 		Objcharts[name].setOption({"xAxis": opt.xAxis})
 
+	charts = ['chart' + str(n) for n in [2, 3, 4, 5, 6]]
+
 	if name == 'wavetrends':
-		update_axis('chart2', date)
-		update_axis('chart4', date)
+		charts.remove('chart3')
 	elif name == 'stoch-rsi':
-		update_axis('chart2', date)
-		update_axis('chart3', date)
+		charts.remove('chart4')
 	elif name == 'ohlc':
-		update_axis('chart3', date)
-		update_axis('chart4', date)
+		charts.remove('chart2')
+	elif name == 'rsi':
+		charts.remove('chart5')
+	elif name == 'cci':
+		charts.remove('chart6')
+	else:
+		return
+	for chart in charts:
+		update_axis(chart, date)
 
 
 def chart1(pair):
@@ -131,6 +146,28 @@ def chart4(pair):
 	og.load_data(ChartData_analisis2[pair])
 
 
+def chart5(pair):
+	jq("#echart5").show()
+	Objcharts['chart5'] = window.echarts.init(document.getElementById("echart5"))
+	og = w_mod_graphs.SeriesSimple('rsi', Objcharts['chart5'], axis_sync)
+	og.driven = False
+	og.title = pair + " rsi"
+	og.market = pair
+	og.hard_limits_y = [0, 100]
+	og.load_data(ChartData_analisis3[pair])
+
+
+def chart6(pair):
+	jq("#echart6").show()
+	Objcharts['chart6'] = window.echarts.init(document.getElementById("echart6"))
+	og = w_mod_graphs.SeriesSimple('cci', Objcharts['chart6'], axis_sync)
+	og.driven = False
+	og.title = pair + " cci"
+	og.market = pair
+	og.hard_limits_y = [-300, 300]
+	og.load_data(ChartData_analisis4[pair])
+
+
 def ask_data(market):
 	if market not in ChartData_trades:
 		Ws_comm.send({'call': 'get_last_trades', 'market': market,
@@ -151,6 +188,18 @@ def ask_data(market):
 	else:
 		chart4(market)
 		jq("#echart4").show()
+
+	if market not in ChartData_analisis3:
+		Ws_comm.send({'call': 'analysis_rsi', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart5(market)
+		jq("#echart5").show()
+
+	if market not in ChartData_analisis4:
+		Ws_comm.send({'call': 'analysis_cci', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
+	else:
+		chart6(market)
+		jq("#echart6").show()
 
 	if market not in ChartData_ob:
 		Ws_comm.send({'call': 'get_orderbook', 'market': market, 'module': Module_name, 'operation': 'enqueue_bg'})
@@ -224,4 +273,14 @@ def incoming_data(data):
 		Last_Pair = data['analysis_stoch_rsi']['market']
 		ChartData_analisis2[data['analysis_stoch_rsi']['market']] = data['analysis_stoch_rsi']['data']
 		chart4(data['analysis_stoch_rsi']['market'])
+
+	elif 'analysis_rsi' in data:
+		Last_Pair = data['analysis_rsi']['market']
+		ChartData_analisis3[data['analysis_rsi']['market']] = data['analysis_rsi']['data']
+		chart5(data['analysis_rsi']['market'])
+
+	elif 'analysis_cci' in data:
+		Last_Pair = data['analysis_cci']['market']
+		ChartData_analisis4[data['analysis_cci']['market']] = data['analysis_cci']['data']
+		chart6(data['analysis_cci']['market'])
 

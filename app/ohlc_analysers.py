@@ -123,14 +123,23 @@ class Analyze(Common):
 	def sma(self, name='sma', period=5):
 		if len(self.df_ohlc) > period:
 			self._add_column_to_ohlc(name, ti.sma(self.df_ohlc.priceclose.values, period=period))
+			return True
+		else:
+			return False
 
 	def ema(self, name='ema', period=5):
 		if len(self.df_ohlc) > period:
 			self._add_column_to_ohlc(name, ti.ema(self.df_ohlc.priceclose.values, period=period))
+			return True
+		else:
+			return False
 
 	def stoch(self, name='stoch', kp=14, ksp=3, d=3):
 		if len(self.df_ohlc) > kp:
 			self._add_column_to_ohlc(name, ti.stoch(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, kp, ksp, d))
+			return True
+		else:
+			return False
 
 	def stoch_rsi(self, name='stoch_rsi', kp=14, ksp=3, d=3):
 		if len(self.df_ohlc) > kp:
@@ -145,10 +154,16 @@ class Analyze(Common):
 	def cci(self, name='cci', period=20):
 		if len(self.df_ohlc) > period:
 			self._add_column_to_ohlc(name, ti.cci(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, period))
+			return True
+		else:
+			return False
 
 	def rsi(self, name='rsi', period=14):
 		if len(self.df_ohlc) > period:
 			self._add_column_to_ohlc(name, ti.rsi(self.df_ohlc.priceclose.values, period))
+			return True
+		else:
+			return False
 
 	def wavetrend(self, name='wt', d_factor=0.015):
 		"""
@@ -221,7 +236,7 @@ def feed_wavetrend(module, range, pairs, MDF):
 												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
 
 
-	Analyze(range=range, pairs=pairs, MDF=MarketDataFeeder(), callback=response)
+	Analyze(range=range, pairs=pairs, MDF=MDF, callback=response)
 
 
 
@@ -254,8 +269,71 @@ def feed_stoch_rsi(module, range, pairs, MDF):
 											  'analysis_stoch_rsi':
 												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
 
-	Analyze(range=range, pairs=pairs, MDF=MarketDataFeeder(), callback=response)
+	Analyze(range=range, pairs=pairs, MDF=MDF, callback=response)
 
+
+def feed_rsi(module, range, pairs, MDF):
+
+	def response(obj, pair, data):
+		ts = ['5min', '30min', '1h', '4h']
+		series = []
+		nseries = []
+		for tl in ts:
+			if obj.ohlc(timelapse=tl).rsi():
+				s = obj.df_ohlc.rsi
+				s.name = s.name + "_" + tl
+				series.append(s)
+			else:
+				nseries.append(tl)
+		for ns in nseries:
+			ts.remove(ns)
+		series.append(obj.df_ohlc.priceclose)
+		df = pd.concat(series, axis=1)
+		for col in df.columns:
+			df[col] = df[col].interpolate(method='linear')
+		df['time'] = df.index
+		#g = ['stoch_rsi_{}'.format(x) for x in ts]
+		#df[-20:][g].plot()
+		rdates = df['time'].dt.to_pydatetime().tolist()
+		rdates = [x.isoformat() for x in rdates]
+		movs = [x for x in zip(rdates, *[df['rsi_'+x].tolist() for x in ts])][int(len(rdates)/2):]
+		Redisdb.rpush("datafeed", json.dumps({'module': module,
+											  'analysis_rsi':
+												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
+
+	Analyze(range=range, pairs=pairs, MDF=MDF, callback=response)
+
+
+def feed_cci(module, range, pairs, MDF):
+
+	def response(obj, pair, data):
+		ts = ['5min', '30min', '1h', '4h']
+		series = []
+		nseries = []
+		for tl in ts:
+			if obj.ohlc(timelapse=tl).cci():
+				s = obj.df_ohlc.cci
+				s.name = s.name + "_" + tl
+				series.append(s)
+			else:
+				nseries.append(tl)
+		for ns in nseries:
+			ts.remove(ns)
+		series.append(obj.df_ohlc.priceclose)
+		df = pd.concat(series, axis=1)
+		for col in df.columns:
+			df[col] = df[col].interpolate(method='linear')
+		df['time'] = df.index
+		#g = ['stoch_rsi_{}'.format(x) for x in ts]
+		#df[-20:][g].plot()
+		rdates = df['time'].dt.to_pydatetime().tolist()
+		rdates = [x.isoformat() for x in rdates]
+		movs = [x for x in zip(rdates, *[df['cci_'+x].tolist() for x in ts])][int(len(rdates)/2):]
+		Redisdb.rpush("datafeed", json.dumps({'module': module,
+											  'analysis_cci':
+												  {'market': pair, 'timelapse': ts, 'data': movs}}).replace("NaN", "null"))
+
+	Analyze(range=range, pairs=pairs, MDF=MDF, callback=response)
 
 
 def test_prophet():
