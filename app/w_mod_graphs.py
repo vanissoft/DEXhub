@@ -29,15 +29,19 @@ class graph_orderbook:
 
 
 	def load_data(self, dat):
-		self.data = dat
+		self.data = dat['data']
 		self.buy_data = [[r[1], r[3]] for r in self.data if r[0]=='buy']
 		self.sell_data = [[r[1], r[3]] for r in self.data if r[0]=='sell']
 
 		if self.title != "":
-			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
-									"grid": {"show": False, 'borderColor': '#f00', "top": "30", "left": "10", "right": "15"}})
+			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
+		self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "10", "right": "10"}})
+
+		if 'datazoom' in dat:
+			print("datazoom", dat['datazoom'])
+			dz_pos = dat['datazoom']
 		else:
-			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "10", "right": "15"}})
+			dz_pos = [0,100]
 
 		self.chart1.setOption({
 			"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
@@ -50,7 +54,7 @@ class graph_orderbook:
 					"splitLine": {"lineStyle": {"color": '#444', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
 					"axisTick": {"lineStyle": {"color": "#aca"}}},
-			"dataZoom": [{"type": "slider", "start": 5, "end": 70, "xAxisIndex": [0], "filterMode": 'filter'}],
+			"dataZoom": [{"type": "slider", "start": dz_pos[0], "end": dz_pos[1], "xAxisIndex": [0], "filterMode": 'filter'}],
 			"responsive": True,
 			"animation": False,
 			"series":
@@ -131,7 +135,10 @@ class graph_simple:
 							 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
 
 		if self.title != "":
-			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
+			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
+								  "grid": {"show": False, 'borderColor': '#f00', "top": "30", "left": "40", "right": "10", "bottom": "20"}})
+		else:
+			self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "40", "right": "10", "bottom": "20"}})
 
 		self.chart1.setOption({"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross', "show": True}, "formatter": self.tooltip, "alwaysShowContent": True}})
 
@@ -198,35 +205,34 @@ class MarketTrades1(graph_simple):
 		print("lenght", len(self.data['data']))
 
 		gdata = {"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross', "show": True}, "formatter": self.tooltip, "alwaysShowContent": True},
+			"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "40", "right": "10", "bottom": "20"},
 			"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"axisPointer": {'link': {'xAxisIndex': 'all'}, 'label': {'backgroundColor': '#ca5'}},
 			"yAxis": [{"scale": True, "splitArea": {"show": False}, "axisLabel": {'show': True, 'color': "#ececec"},
-				"splitLine": {"show": True, "lineStyle": {"color": "#555"}}},
-				{"scale": True, "gridIndex": 1, "splitNumber": 2, "axisLabel": {"show": False},
+						"splitLine": {"show": True, "lineStyle": {"color": "#555"}}},
+				{"max": max(self.data['volume_data'])*3, "splitNumber": 2, "axisLabel": {"show": False},
 					"axisLine": {"show": False, }, "axisTick": {"show": False}, "splitLine": {"show": False}}],
 			"xAxis": [{"type": 'category', "data": self.data['category_data'], "scale": True, "boundaryGap": False,
-						"axisLine": {"onZero": False}, "splitLine": {"show": False}, "splitNumber": 20,
-						"min": 'dataMin', "max": 'dataMax', "axisPointer": {"z": 100}},
-						{"type": 'category', "gridIndex": 1, "data": self.data['category_data'], "scale": True,
-						"boundaryGap": True, "axisLine": {"onZero": False}, "axisTick": {"show": False},
-						"splitLine": {"show": False}, "axisLabel": {"show": False}, "splitNumber": 20,
-						"min": 'dataMin', "max": 'dataMax'}],
+						"min": 'dataMin', "max": 'dataMax',
+						"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
+						"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
+						"axisTick": {"lineStyle": {"color": "#aaa"}}}
+					],
 			"responsive": True,
 			"animation": False,
 			"series":  [{"name": 'Dow-Jones index', "type": 'candlestick', "data": self.data['data'],
+						 	"yAxisIndex": 0,
 							"itemStyle": {"normal": {"color": "#1a924b", "color0": "#8f4441", "borderColor": None,
 							"borderColor0": None}}},
-						{"name": "Volume", "type": "bar", "xAxisIndex": 1, "yAxisIndex": 1, "data": self.data['volume_data'],
+						{"name": "Volume", "type": "bar", "data": self.data['volume_data'],
+						 "yAxisIndex": 1,
 						 "itemStyle": {"normal": {"color": "#5c5c5c"}}}]
 			}
 
-		if self.title == '':
-			gdata['grid'] = [{'left': '10%', 'right': '5%', 'height': '65%', 'top': "10"},
-										{'left': '10%', 'right': '5%', 'top': '80%', 'height': '16%'}]
-		else:
+		if self.title != '':
 			gdata['title'] = {"text": self.title, 'left': '0%', 'textStyle': {'color': '#aaa'}}
-			gdata['grid'] = [{'left': '10%', 'right': '5%', 'height': '65%', 'top': "15"},
-										{'left': '10%', 'right': '5%', 'top': '80%', 'height': '16%'}]
+			gdata["grid"] =  {"show": False, 'borderColor': '#f00', "top": "20", "left": "40", "right": "10", "bottom": "20"}
+
 
 		if len(self.orders) > 0:
 			print("w_mod_graph orders 2", self.orders)
@@ -265,6 +271,7 @@ class PieChart1(graph_orderbook):
 		super().__init__(objchart)
 
 	def load_data(self, dat):
+		dat = dat['data']
 		data = [{"name": d, "value": round((dat[d][0] + dat[d][1]) * dat[d][2][0], 0)} for d in dat]
 		data.sort(key=lambda x: x['value'], reverse=True)
 		data = data[:5]

@@ -57,7 +57,7 @@ def init_echart(data):
 	jq("#echart1").show()
 	ograph = window.echarts.init(document.getElementById("echart1"))
 	og = w_mod_graphs.PieChart1(ograph)
-	og.load_data(data)
+	og.load_data({'data': data})
 
 
 def on_tabshown(ev):

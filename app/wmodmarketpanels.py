@@ -39,7 +39,7 @@ def drag_receive(ev, ui):
 	save_layout()
 
 
-def query_make(mkt, chart_type):
+def query_market(mkt, chart_type):
 	global Comm
 	if chart_type == "trades":
 		Comm.send({'call': 'get_last_trades', 'market': mkt,
@@ -80,7 +80,7 @@ def new_panel(market, column, chart_type, data=None):
 	document["bFilter_" + id].bind("click", click_show)
 	document["bClose_" + id].bind("click", click_close)
 	if data == None:
-		query_make(market, chart_type)
+		query_market(market, chart_type)
 
 
 
@@ -126,7 +126,7 @@ def refresh_data():
 	for p in Panels:
 		if now > Panels[p]['next_refresh']:
 			jq("#loading_" + p).show()
-			query_make(Panels[p]['market'], Panels[p]['chart_type'])
+			query_market(Panels[p]['market'], Panels[p]['chart_type'])
 			Panels[p]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(seconds=random.randint(60, 600))
 
 
@@ -216,7 +216,7 @@ def incoming_data(data):
 				Panels[p]['wmgraph_obj'] = og
 				Panels[p]['data'] = data
 				Panels[p]['next_refresh'] = datetime.datetime.now() + datetime.timedelta(seconds=random.randint(60,600))
-				og.load_data(Panels[p]['data']['orderbook']['data'])
+				og.load_data({'data': Panels[p]['data']['orderbook']['data']})
 
 	elif 'marketpanels_layout' in data:
 		print("layout:", data['marketpanels_layout'])

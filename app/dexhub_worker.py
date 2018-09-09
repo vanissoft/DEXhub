@@ -121,14 +121,6 @@ class Operations_listener():
 		rtn = await blockchain.open_positions()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'open_positions': rtn}))
 
-	#TODO: remove
-	async def remove_get_market_trades(self, data):
-		movs = await blockchain.get_market_trades(data)
-		if movs is not None and len(movs) > 0:
-			movs.sort(key=lambda x: x[0])
-			movs = movs[-100:]
-			Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'market_trades': {'market': data['market'], 'data': movs}}))
-
 	async def get_last_trades(self, data):
 		ohlc_analysers.last_trades(module=Active_module, range=(arrow.utcnow().shift(days=-7), arrow.utcnow()), pairs=[data['market']], MDF=MDF)
 

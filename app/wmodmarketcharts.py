@@ -24,8 +24,10 @@ Module_name = "marketcharts"
 Objcharts = {}
 MarketTab = {}
 MarketTab2 = {}
+ChartData_pairs = {}
 ChartData_trades = {}
 ChartData_ob = {}
+ChartOb = {}
 ChartData_analisis1 = {}
 ChartData_analisis2 = {}
 ChartData_analisis3 = {}
@@ -40,7 +42,12 @@ Last_Pair = ''
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
-	Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
+	if len(ChartData_pairs) == 0:
+		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
+	else:
+		print("ChartData_pairs cache")
+		incoming_data(ChartData_pairs)
+
 	document["bRefresh"].bind('click', refresh)
 	document["bRefreshAll"].bind('click', refresh_all)
 
@@ -59,6 +66,7 @@ def refresh(ev):
 def refresh_all(ev):
 	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_analisis3, ChartData_analisis4, ChartData_ob
 	print("refresh all")
+	ChartData_pairs = {}
 	ChartData_trades = {}
 	ChartData_analisis1 = {}
 	ChartData_analisis2 = {}
@@ -73,14 +81,20 @@ def axis_sync(name, ochart, opts):
 			if l[1] >= txt:
 				return l[0]
 		return len(list1)-1
-	print(name)
-	print(1, opts.axisPointer[0].value)
-	print(2, opts.xAxis[0].axisPointer.value)
-	print(2, opts.yAxis[0].axisPointer.value)
-	print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
+	if False:  #debug
+		print(name)
+		print(1, opts.axisPointer[0].value)
+		print(2, opts.xAxis[0].axisPointer.value)
+		print(2, opts.yAxis[0].axisPointer.value)
+		print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
+
+	if 'ob' in Objcharts:
+		ob_opt = Objcharts['ob'].getOption()
+		ChartOb[Last_Pair] = {'start': ob_opt.dataZoom[0].start, 'end': ob_opt.dataZoom[0].end}
+
 	date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
 	def update_axis(name, date):
-		if name not in Objcharts:
+		if name not in Objcharts or name == 'ob':
 			return
 		opt = Objcharts[name].getOption()
 		opt.xAxis[0].axisPointer.value = nearest(opt.xAxis[0].data, date)
@@ -108,12 +122,15 @@ def axis_sync(name, ochart, opts):
 
 def chart1(pair):
 	jq("#echart1").show()
-	ograph = window.echarts.init(document.getElementById("echart1"))
-	og = w_mod_graphs.OrderBook1(ograph)
+	Objcharts['ob'] = window.echarts.init(document.getElementById("echart1"))
+	og = w_mod_graphs.OrderBook1(Objcharts['ob'])
 	og.title = pair + " orderbook"
 	og.market = pair
 	#og.orders = Order_pos[pair]
+	if Last_Pair in ChartOb:
+		ChartData_ob[pair]['datazoom'] = [ChartOb[Last_Pair]['start'], ChartOb[Last_Pair]['end']]
 	og.load_data(ChartData_ob[pair])
+
 
 def chart2(pair):
 	Objcharts['chart2'] = window.echarts.init(document.getElementById("echart2"))
@@ -235,11 +252,12 @@ def onResize():
 
 
 def incoming_data(data):
-	global Order_pos, Order_id_list
+	global Order_pos, Order_id_list, ChartData_pairs
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
 	print("wmodmarketcharts incoming", list(data.keys()))
 	if 'stats_pair' in data:
+		ChartData_pairs = data
 		dat = json.loads(data['stats_pair'])
 		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
 		print(dat[:5])
@@ -256,7 +274,7 @@ def incoming_data(data):
 		market = data['orderbook']['market']
 		maxv = data['orderbook']['data'][0][3]
 		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
-		ChartData_ob[market] = data['orderbook']['data']
+		ChartData_ob[market] = data['orderbook']
 		chart1(market)
 
 	elif 'market_trades' in data:

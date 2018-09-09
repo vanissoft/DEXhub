@@ -78,7 +78,7 @@ def on_tabshown(ev):
 	og.title = market + " orderbook"
 	og.market = market
 	og.orders = Order_pos[market]
-	og.load_data(ChartData[market])
+	og.load_data({'data': ChartData[market]})
 	jq('#tableExample1').DataTable().search(market).draw()
 	jq("#echarty").show()
 
