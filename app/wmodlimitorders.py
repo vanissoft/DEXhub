@@ -113,35 +113,28 @@ def incoming_data(data):
 	if 'open_positions' in data:
 		if data['open_positions'] is None:
 			return
-
 		dat1 = []
-		for acc in data['open_positions']:
-			for pos in data['open_positions'][acc]:
-				pos.append(acc)
-			dat1.extend(data['open_positions'][acc])
 		Order_id_list = {}
 		Order_id_deleted = []
 		#jq('#panel1').addClass('ld-loading')
-		cols = "Market,Operation,Quantity,Price,Total,Date"
+		cols = "Market,Operation,Quantity,Price,Total,cancel"
 		dat1.sort(key=lambda x: x[0]+x[3]+x[1])
 		markets = dict()
 
 		# populate table
-		print(dat1[-2:])
 		dat = []
-		for d in dat1:
-			tmpl1 = "{:,."+str(d[8])+"f}"
-			tmpl2 = "{:,."+str(d[9])+"f}"
-			market = d[1]+"/"+d[3]
+		for d in data['open_positions']:
+			tmpl1 = "{:,."+str(d[9])+"f}"
+			tmpl2 = "{:,."+str(d[10])+"f}"
 			# {1.7.12321: 'account'}
-			Order_id_list[d[10]] = d[11]
-			dat.append([market, d[0], tmpl1.format(d[2]), tmpl2.format(d[5]), tmpl2.format(d[6]), d[7], d[10]])
-			if market in markets:
-				markets[market] += 1
-				Order_pos[market].append([d[0], d[5]])
+			Order_id_list[d[1]] = d[0]
+			dat.append([d[2], d[3], tmpl1.format(d[4]), tmpl2.format(d[6]), tmpl2.format(d[8]), d[1]])
+			if d[2] in markets:
+				markets[d[2]] += 1
+				Order_pos[d[2]].append([d[4], d[6]])
 			else:
-				markets[market] = 1
-				Order_pos[market] = [[d[0], d[5]]]
+				markets[d[2]] = 1
+				Order_pos[d[2]] = [[d[4], d[6]]]
 
 		# create tabs
 		lmkts = list(markets.keys())
@@ -165,7 +158,7 @@ def incoming_data(data):
 		dt = jq('#tableExample1').DataTable({"data": dat, "columns": [{'title': v} for v in cols.split(",")],
 			"dom": "<'row'<'col-sm-4'l><'col-sm-4 text-center'B><'col-sm-4'f>>tp",
 			"lengthMenu": [[10, 16, 50, -1], [10, 16, 50, "All"]],
-			"columnDefs": [{"targets": 6, "render": cell_buttons}],
+			"columnDefs": [{"targets": 5, "render": cell_buttons}],
 			"drawCallback": table_drawn,
 			"buttons": [{"extend": 'copy', "className": 'btn-sm'},
 						{"extend": 'csv', "title": 'ExampleFile', "className": 'btn-sm'},
@@ -183,7 +176,7 @@ def incoming_data(data):
 	elif 'market_trades' in data:
 		market = data['market_trades']['market']
 		ograph = window.echarts.init(document.getElementById("echarty"))
-		og = w_mod_graphs.MarketTrades1(ograph)
+		og = w_mod_graphs.MarketTrades1('trades', ograph, None)
 		og.title = market + " trades"
 		og.market = market
 		og.orders = Order_pos[market]

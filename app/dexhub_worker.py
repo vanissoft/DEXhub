@@ -69,7 +69,10 @@ def privileged_connection(account_name):
 	if account_name not in WBTS or not WBTS[account_name].is_connected():
 		tmp = accounts.account_list()
 		wif = {x[0]: x[2] for x in tmp}
-		WBTS[account_name] = BitShares(node=WSS_NODE, wif=wif[account_name])
+		try:
+			WBTS[account_name] = BitShares(node=WSS_NODE, wif=wif[account_name])
+		except:
+			return None
 	return WBTS[account_name]
 
 
@@ -201,6 +204,7 @@ class Operations_listener():
 		# need account 
 		conn = privileged_connection(data['account'])
 		if conn is None:
+			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "WIF Error", 'error': True}))
 			return
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(data['id'])}))
 		blockchain.order_delete(id=data['id'], conn=conn, account=data['account'])

@@ -163,11 +163,11 @@ async def read_ticker(market, force=False):
 		return [1,0,0]
 	# BTS/USD get ticker of BTS with prices in USD
 	rtn = Bitshares.rpc.get_ticker(pair[1], pair[0])
-	mid_price = (float(rtn['lowest_ask']) + float(rtn['highest_bid']))/2
+	price = float(rtn['highest_bid'])
 	chg_24h = float(rtn['percent_change'])
 	volume = float(rtn['base_volume'])
-	rtn = [mid_price, volume, chg_24h]
-	Redisdb.setex("ticker_"+market, random.randint(200, 3000), json.dumps(rtn))
+	rtn = [price, volume, chg_24h]
+	Redisdb.setex("ticker_"+market, random.randint(200, 500), json.dumps(rtn))
 	return rtn
 
 
@@ -217,11 +217,10 @@ async def get_balances():
 	# TODO: another column for asset collateral
 	"""
 	Return balance consolidated with "balances_openpos"
-	:return: {'asset': [balance, open orders], ...}
 	"""
 	global Assets
 	load_assets()
-
+	#return None
 	accounts = await account_list()
 	bal1 = await read_balances()
 	if bal1 is None:
@@ -231,21 +230,28 @@ async def get_balances():
 		rtn = await open_positions()
 		bal2 = Redisdb.get("balances_openpos")
 	bal2 = json.loads(bal2.decode('utf8'))
-	for acc in accounts:
-		for b in bal2[acc[0]]:
-			if b in bal1[acc[0]]:
-				bal1[acc[0]][b] = [bal1[acc[0]][b][0], bal2[acc[0]][b]]
-			else:
-				bal1[acc[0]][b] = [0, bal2[acc[0]][b]]
+	# bal2: [[account, order_id, pair, buy or sell, amount1, asset_id2, amount2, asset_id2, price, decs1, decs2
+	for b in bal2:
+		if b[3] != 'sell':
+			continue
+		token = b[2].split('/')[0]
+		account = b[0]
+		if token in bal1[account]:
+			bal1[account][token] = [bal1[account][token][0], b[4]]
+		else:
+			bal1[account][token] = [0, b[4]]
+
 	base = await read_ticker("BTS/USD")
 	#return [mid_price, volume, chg_24h]
-	for ac in bal1:
-		for b in bal1[ac]:
+	for account in bal1:
+		for b in bal1[account]:
+			if 'VYI' in b:
+				print()
 			tick = await read_ticker(b+"/BTS")
 			for t in enumerate(tick):
 				if t[1] == float('Infinity'):
 					tick[t[0]] = 0
-			bal1[ac][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Assets[Assets_name[b]][1])])
+			bal1[account][b].append([tick[0]*base[0], tick[1]*base[0], tick[2], int(Assets[Assets_name[b]][1])])
 
 	margin_lock_BTS = {}
 	margin_lock_USD = {}
@@ -319,7 +325,7 @@ async def get_orderbook(data):
 	return buys
 
 
-async def open_positions():
+async def delete_open_positions():
 	global Assets
 	alist = await account_list()
 	if alist is None or len(alist) == 0:
@@ -396,6 +402,54 @@ async def open_positions():
 				opos2[acc][asset] = tot
 			# store open pos balances with expiration
 		Redisdb.setex("balances_openpos", 300, json.dumps(opos2))
+	return ob
+
+
+async def open_positions():
+	global Assets
+	alist = await account_list()
+	if alist is None or len(alist) == 0:
+		return None
+	load_assets()
+
+	ob = []
+	for account in alist:
+		try:
+			account_data = Bitshares.rpc.get_full_accounts([account[0]], False)[0][1]
+		except:
+			continue
+		# read call orders
+		call_orders = []
+		for co in account_data['call_orders']:
+			quote = co['call_price']['quote']['asset_id']
+			base = co['call_price']['base']['asset_id']
+			try:
+				amount_debt = round(int(co['debt']) / 10 ** Assets[quote][1], Assets[quote][1])
+				amount_collateral = round(int(co['collateral']) / 10 ** Assets[base][1], Assets[base][1])
+				call_orders.append([account[0], Assets[quote][0], amount_debt, Assets[base][0], amount_collateral])
+			except Exception as err:
+				print(err.__repr__())
+
+		for lo in account_data['limit_orders']:
+			quote = lo['sell_price']['quote']['asset_id']
+			base = lo['sell_price']['base']['asset_id']
+			pair = Assets_id[quote]+'/'+Assets_id[base]
+			pair_inv = Assets_id[base]+'/'+Assets_id[quote]
+			try:
+				amount_quote = round(int(lo['sell_price']['quote']['amount']) / 10 ** Assets[quote][1],
+									 Assets[quote][1])
+				amount_base = round(int(lo['sell_price']['base']['amount']) / 10 ** Assets[base][1], Assets[base][1])
+			except Exception as err:
+				print(err.__repr__())
+			# buy amount_quote quote for amount_base bases  (quote/base)
+			# sell amount_base base for amount_quote quotes  (base/quote)
+			price = round(amount_quote/amount_base, Assets[base][1])
+			price_inv = round(amount_base/amount_quote, Assets[quote][1])
+
+			ob.append([account[0], lo['id'], pair, 'buy', amount_quote, quote, amount_base, base, price, Assets[quote][1], Assets[base][1]])
+			ob.append([account[0], lo['id'], pair_inv, 'sell', amount_base, base, amount_quote, quote, price_inv, Assets[base][1], Assets[quote][1]])
+	Redisdb.setex("balances_openpos", 300, json.dumps(ob))
+	# TODO: Open positions are part of balance
 	return ob
 
 

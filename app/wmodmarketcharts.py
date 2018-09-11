@@ -44,6 +44,7 @@ def init(comm):
 	Ws_comm = comm
 	if len(ChartData_pairs) == 0:
 		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
+		Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		print("ChartData_pairs cache")
 		incoming_data(ChartData_pairs)
@@ -256,7 +257,14 @@ def incoming_data(data):
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
 	print("wmodmarketcharts incoming", list(data.keys()))
-	if 'stats_pair' in data:
+	if 'open_positions' in data:
+		if data['open_positions'] is None:
+			return
+		print(data['open_positions'])
+		for order in data['open_positions']:
+			print(order)
+
+	elif 'stats_pair' in data:
 		ChartData_pairs = data
 		dat = json.loads(data['stats_pair'])
 		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
