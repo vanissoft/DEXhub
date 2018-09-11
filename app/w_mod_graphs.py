@@ -90,7 +90,7 @@ class graph_orderbook:
 				#TODO: replace second yAxis with a more suitable value
 				dat.append([{"name": "", "xAxis": o[1], "yAxis": 0, "symbol": "none",
 							"lineStyle": {"normal": {'type': 'solid', 'color': color}}},
-							{"name": "", "xAxis": o[1], "yAxis": 100, "symbol": "none"}])
+							{"name": "", "xAxis": o[1], "yAxis": 'max', "symbol": "none"}])
 			self.chart1.setOption({"series": [{"id": "b", "markLine": {"silent": True, "animation": False, "data": dat}}]})
 
 

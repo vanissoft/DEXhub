@@ -325,86 +325,6 @@ async def get_orderbook(data):
 	return buys
 
 
-async def delete_open_positions():
-	global Assets
-	alist = await account_list()
-	if alist is None or len(alist) == 0:
-		return None
-	load_assets()
-
-	ob = {}
-	for account in alist:
-		ob[account[0]] = []
-		try:
-			account_data = Bitshares.rpc.get_full_accounts([account[0]], False)[0][1]
-		except:
-			continue
-		# read call orders
-		if Redisdb.get("balances_callorders") is None or True:
-			call_orders = []
-			for co in account_data['call_orders']:
-				quote = co['call_price']['quote']['asset_id']
-				base = co['call_price']['base']['asset_id']
-				try:
-					amount_debt = round(int(co['debt']) / 10 ** Assets[quote][1], Assets[quote][1])
-					amount_collateral = round(int(co['collateral']) / 10 ** Assets[base][1], Assets[base][1])
-					call_orders.append([account[0], Assets[quote][0], amount_debt, Assets[base][0], amount_collateral])
-				except Exception as err:
-					print(err.__repr__())
-			if len(call_orders) > 0:
-				#TODO: without use?
-				Redisdb.setex("balances_callorders", 300, json.dumps(call_orders))
-
-		base_coins = 'BTS,USD,CNY,RUB,EUR'.split(",")
-		for lo in account_data['limit_orders']:
-			quote = lo['sell_price']['quote']['asset_id']
-			base = lo['sell_price']['base']['asset_id']
-			date = arrow.get(lo['expiration']).shift(years=-5).isoformat()
-			try:
-				amount_quote = round(int(lo['sell_price']['quote']['amount']) / 10 ** Assets[quote][1],
-									 Assets[quote][1])
-				amount_base = round(int(lo['sell_price']['base']['amount']) / 10 ** Assets[base][1], Assets[base][1])
-			except Exception as err:
-				print(err.__repr__())
-			if Assets[base][0] in base_coins:  # buy
-				price = round(amount_base / amount_quote, Assets[base][1])
-				total = round(amount_quote * price, Assets[base][1])
-				print("buy", Assets[quote][0], amount_quote, Assets[base][0], amount_base, price, date)
-				#           0       1               2                   3           4       5       6       7       8               9           10
-				ob[account[0]].append(["buy", Assets[quote][0], amount_quote, Assets[base][0], amount_base, price, total, date,
-									   Assets[quote][1], Assets[base][1], lo['id']])
-			else:
-				price = round(amount_quote / amount_base, Assets[base][1])
-				total = round(amount_base * price, Assets[base][1])
-				print("sell", Assets[base][0], amount_base, Assets[quote][0], amount_quote, price, date)
-				ob[account[0]].append(["sell", Assets[base][0], amount_base, Assets[quote][0], amount_quote, price, total, date,
-									   Assets[base][1], Assets[quote][1], lo['id']])
-
-	# Open positions are part of balance
-	if Redisdb.get("balances_openpos") is None or True:
-		opos2 = {}
-		for acc in ob:
-			opos2[acc] = {}
-			opos = [[x[1], x[2]] for x in ob[acc] if x[0] == 'sell']
-			opos.extend([[x[3], x[4]] for x in ob[acc] if x[0] == 'buy'])
-			opos.sort(key=lambda x: x[0])
-			asset = ''
-			tot = 0
-			for o in opos:
-				if asset != o[0] and asset != '':
-					opos2[acc][asset] = tot
-					asset, tot = o[0], o[1]
-				else:
-					tot += o[1]
-					if asset == '':
-						asset = o[0]
-			if tot > 0:
-				opos2[acc][asset] = tot
-			# store open pos balances with expiration
-		Redisdb.setex("balances_openpos", 300, json.dumps(opos2))
-	return ob
-
-
 async def open_positions():
 	global Assets
 	alist = await account_list()
@@ -443,13 +363,13 @@ async def open_positions():
 				print(err.__repr__())
 			# buy amount_quote quote for amount_base bases  (quote/base)
 			# sell amount_base base for amount_quote quotes  (base/quote)
-			price = round(amount_quote/amount_base, Assets[base][1])
-			price_inv = round(amount_base/amount_quote, Assets[quote][1])
-
+			price = round(amount_base/amount_quote, Assets[base][1])
+			price_inv = round(amount_quote/amount_base, Assets[quote][1])
+			if 'CVN' in pair:
+				print()
 			ob.append([account[0], lo['id'], pair, 'buy', amount_quote, quote, amount_base, base, price, Assets[quote][1], Assets[base][1]])
 			ob.append([account[0], lo['id'], pair_inv, 'sell', amount_base, base, amount_quote, quote, price_inv, Assets[base][1], Assets[quote][1]])
 	Redisdb.setex("balances_openpos", 300, json.dumps(ob))
-	# TODO: Open positions are part of balance
 	return ob
 
 

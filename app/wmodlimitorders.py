@@ -29,6 +29,9 @@ Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
 Ws_comm = None
 
+#TODO: datatables destroy prior to recharge
+
+
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
@@ -116,6 +119,7 @@ def incoming_data(data):
 		dat1 = []
 		Order_id_list = {}
 		Order_id_deleted = []
+		Order_pos = {}
 		#jq('#panel1').addClass('ld-loading')
 		cols = "Market,Operation,Quantity,Price,Total,cancel"
 		dat1.sort(key=lambda x: x[0]+x[3]+x[1])
@@ -123,18 +127,20 @@ def incoming_data(data):
 
 		# populate table
 		dat = []
+		#[account[0], lo['id'], pair, 'buy', amount_quote, quote, amount_base, base, price, Assets[quote][1],Assets[base][1]])
 		for d in data['open_positions']:
 			tmpl1 = "{:,."+str(d[9])+"f}"
 			tmpl2 = "{:,."+str(d[10])+"f}"
 			# {1.7.12321: 'account'}
 			Order_id_list[d[1]] = d[0]
-			dat.append([d[2], d[3], tmpl1.format(d[4]), tmpl2.format(d[6]), tmpl2.format(d[8]), d[1]])
+			dat.append([d[2], d[3], tmpl1.format(d[4]), tmpl2.format(d[8]), tmpl2.format(d[6]), d[1]])
 			if d[2] in markets:
 				markets[d[2]] += 1
-				Order_pos[d[2]].append([d[4], d[6]])
+				# quantity, price
+				Order_pos[d[2]].append([d[4], d[8]])
 			else:
 				markets[d[2]] = 1
-				Order_pos[d[2]] = [[d[4], d[6]]]
+				Order_pos[d[2]] = [[d[4], d[8]]]
 
 		# create tabs
 		lmkts = list(markets.keys())

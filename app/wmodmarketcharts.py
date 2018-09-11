@@ -33,6 +33,7 @@ ChartData_analisis2 = {}
 ChartData_analisis3 = {}
 ChartData_analisis4 = {}
 Order_pos = {}
+Order_count = {}
 Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
 Ws_comm = None
@@ -43,8 +44,8 @@ def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	if len(ChartData_pairs) == 0:
-		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue'})
-		Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
+		Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue'})
+		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		print("ChartData_pairs cache")
 		incoming_data(ChartData_pairs)
@@ -127,7 +128,7 @@ def chart1(pair):
 	og = w_mod_graphs.OrderBook1(Objcharts['ob'])
 	og.title = pair + " orderbook"
 	og.market = pair
-	#og.orders = Order_pos[pair]
+	og.orders = Order_pos[pair]
 	if Last_Pair in ChartOb:
 		ChartData_ob[pair]['datazoom'] = [ChartOb[Last_Pair]['start'], ChartOb[Last_Pair]['end']]
 	og.load_data(ChartData_ob[pair])
@@ -239,7 +240,13 @@ def on_tabshown(ev):
 
 
 def create_tab(num, name, market, badge1):
-	tab1 = """<li class=""><a data-toggle="tab" href="#tab-{}" aria-expanded="false">{}<span class="badge pull-right">{}</span></a></li>""".format(num, name, str(badge1))
+	#TODO: +badge with orders
+	if len(Order_count) > 0:
+		pass
+	if market in Order_count:
+		tab1 = """<li class=""><a data-toggle="tab" href="#tab-{}" aria-expanded="false">{}   <span class="label label-danger">{}</span><span class="badge pull-right">{}</span></a></li>""".format(num, name, str(Order_count[market]), str(badge1))
+	else:
+		tab1 = """<li class=""><a data-toggle="tab" href="#tab-{}" aria-expanded="false">{}<span class="badge pull-right">{}</span></a></li>""".format(num, name, str(badge1))
 	document["nav1"].innerHTML += tab1
 	MarketTab[market] = num
 	MarketTab2[num] = market
@@ -253,16 +260,23 @@ def onResize():
 
 
 def incoming_data(data):
-	global Order_pos, Order_id_list, ChartData_pairs
+	global Order_pos, Order_id_list, ChartData_pairs, Order_count
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
 	print("wmodmarketcharts incoming", list(data.keys()))
 	if 'open_positions' in data:
 		if data['open_positions'] is None:
 			return
-		print(data['open_positions'])
-		for order in data['open_positions']:
-			print(order)
+		Order_pos = {}
+		for d in data['open_positions']:
+			Order_id_list[d[1]] = d[0]
+			if d[2] in Order_count:
+				Order_count[d[2]] += 1
+				# quantity, price
+				Order_pos[d[2]].append([d[4], d[8]])
+			else:
+				Order_count[d[2]] = 1
+				Order_pos[d[2]] = [[d[4], d[8]]]
 
 	elif 'stats_pair' in data:
 		ChartData_pairs = data
