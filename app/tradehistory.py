@@ -51,8 +51,11 @@ def read_trade_history():
 			'sort_by=-block_data.block_time&type=data&agg_field=operation_type'
 
 	rtn2 = requests.get(rq, headers=hdrs)
-
-	op_list = json.loads(rtn2.content.decode('utf8'))
+	try:
+		op_list = json.loads(rtn2.content.decode('utf8'))
+	except Exception as err:
+		print(err.__repr__())
+		return
 	order = namedtuple('order_filled', ['block_num', 'block_time', 'order_id', 'account_id', 'is_maker',
 										'pays_asset', 'pays_amount', 'receives_asset', 'receives_amount'])
 	order_list = []

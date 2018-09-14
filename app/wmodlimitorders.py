@@ -27,6 +27,7 @@ ChartData = {}
 Order_pos = {}
 Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
+DataTables = {}
 Ws_comm = None
 
 #TODO: datatables destroy prior to recharge
@@ -36,17 +37,17 @@ def init(comm):
 	global Ws_comm
 	Ws_comm = comm
 	#jq('#panel1').toggleClass('ld-loading')
-	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
+	Ws_comm.send({'call': 'open_positions', 'refresh': False, 'module': Module_name, 'operation': 'enqueue_bg'})
 	document["bReloadOrders"].bind('click', click_reload_orders)
 	document["bBalances"].bind('click', click_balances)
 	jq("#echartx").hide()
 	jq("#echarty").hide()
 
 def click_reload_orders(ev):
-	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue_bg'})
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'refresh': True, 'operation': 'enqueue_bg'})
 
 def click_balances(ev):
-	Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'operation': 'enqueue_bg'})
+	Ws_comm.send({'call': 'get_balances', 'module': Module_name, 'refresh': True, 'operation': 'enqueue_bg'})
 
 def click_delete_order(ev):
 	global Order_id_deleted
@@ -70,14 +71,14 @@ def on_tabshown(ev):
 	Ws_comm.send({'call': 'get_last_trades', 'market': market,
 		'date_from': (datetime.datetime.now() - datetime.timedelta(days=30)).isoformat(),
 		'date_to': datetime.datetime.now().isoformat(),
-		'module': Module_name, 'operation': 'enqueue_bg'})
+		'module': Module_name, 'operation': 'enqueue'})
 
 	if market not in ChartData:
 		return
 
 	jq("#echartx").show()
 	ograph = window.echarts.init(document.getElementById("echartx"))
-	og = w_mod_graphs.OrderBook1(ograph)
+	og = w_mod_graphs.OrderBook1('orderbook', ograph)
 	og.title = market + " orderbook"
 	og.market = market
 	og.orders = Order_pos[market]
@@ -109,7 +110,7 @@ def table_drawn(settings):
 
 
 def incoming_data(data):
-	global Order_pos, Order_id_list
+	global Order_pos, Order_id_list, DataTables
 	# [market, 'sell', "{0:,.5f}".format(q1), "{0:,.8f}".format(q2 / q1), "{0:,.5f}".format(q2), t[1]]
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
@@ -161,7 +162,9 @@ def incoming_data(data):
 			else:
 				return '<span>deleted</span>'.format(data)
 
-		dt = jq('#tableExample1').DataTable({"data": dat, "columns": [{'title': v} for v in cols.split(",")],
+		if 'main' in DataTables:
+			DataTables['main'].destroy()
+		DataTables['main'] = jq('#tableExample1').DataTable({"data": dat, "columns": [{'title': v} for v in cols.split(",")],
 			"dom": "<'row'<'col-sm-4'l><'col-sm-4 text-center'B><'col-sm-4'f>>tp",
 			"lengthMenu": [[10, 16, 50, -1], [10, 16, 50, "All"]],
 			"columnDefs": [{"targets": 5, "render": cell_buttons}],
@@ -175,8 +178,9 @@ def incoming_data(data):
 
 	elif 'orderbook' in data:
 		market = data['orderbook']['market']
-		maxv = data['orderbook']['data'][0][3]
-		data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
+		if False:
+			maxv = data['orderbook']['data'][0][3]
+			data['orderbook']['data'].insert(0, ['buy', 0, 0, maxv])
 		ChartData[market] = data['orderbook']['data']
 
 	elif 'market_trades' in data:

@@ -43,8 +43,8 @@ Last_Pair = ''
 def init(comm):
 	global Ws_comm
 	Ws_comm = comm
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue'})
 	if len(ChartData_pairs) == 0:
-		Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'operation': 'enqueue'})
 		Ws_comm.send({'call': 'get_tradestats_pair', 'module': Module_name, 'operation': 'enqueue_bg'})
 	else:
 		print("ChartData_pairs cache")
@@ -54,8 +54,9 @@ def init(comm):
 	document["bRefreshAll"].bind('click', refresh_all)
 
 def refresh(ev):
+	#TODO: pair list must refresh order numbers
 	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_ob
-	print("refresh")
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'refresh': True, 'operation': 'enqueue'})
 	if Last_Pair != '':
 		del ChartData_trades[Last_Pair]
 		del ChartData_analisis1[Last_Pair]
@@ -64,6 +65,8 @@ def refresh(ev):
 		del ChartData_analisis4[Last_Pair]
 		del ChartData_ob[Last_Pair]
 		ask_data(Last_Pair)
+	incoming_data(ChartData_pairs)
+
 
 def refresh_all(ev):
 	global ChartData_trades, ChartData_analisis1, ChartData_analisis2, ChartData_analisis3, ChartData_analisis4, ChartData_ob
@@ -75,6 +78,7 @@ def refresh_all(ev):
 	ChartData_analisis3 = {}
 	ChartData_analisis4 = {}
 	ChartData_ob = {}
+	Ws_comm.send({'call': 'open_positions', 'module': Module_name, 'refresh': True, 'operation': 'enqueue'})
 
 
 def axis_sync(name, ochart, opts):
@@ -90,13 +94,17 @@ def axis_sync(name, ochart, opts):
 		print(2, opts.yAxis[0].axisPointer.value)
 		print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
 
-	if 'ob' in Objcharts:
-		ob_opt = Objcharts['ob'].getOption()
+	if 'chart1' in Objcharts:
+		ob_opt = Objcharts['chart1'].getOption()
 		ChartOb[Last_Pair] = {'start': ob_opt.dataZoom[0].start, 'end': ob_opt.dataZoom[0].end}
+
+	price = None
+	if name == 'ohlcv':
+		price = opts.yAxis[0].axisPointer.value
 
 	date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
 	def update_axis(name, date):
-		if name not in Objcharts or name == 'ob':
+		if name not in Objcharts or name == 'chart1':
 			return
 		opt = Objcharts[name].getOption()
 		opt.xAxis[0].axisPointer.value = nearest(opt.xAxis[0].data, date)
@@ -104,13 +112,20 @@ def axis_sync(name, ochart, opts):
 		opt.xAxis[0].axisPointer.status = True
 		Objcharts[name].setOption({"xAxis": opt.xAxis})
 
+	def update_ob_axis(price):
+		opt = Objcharts['chart1'].getOption()
+		opt.xAxis[0].axisPointer.value = str(price)
+		opt.xAxis[0].axisPointer.show = True
+		opt.xAxis[0].axisPointer.status = True
+		Objcharts['chart1'].setOption({"xAxis": opt.xAxis})
+
 	charts = ['chart' + str(n) for n in [2, 3, 4, 5, 6]]
 
 	if name == 'wavetrends':
 		charts.remove('chart3')
 	elif name == 'stoch-rsi':
 		charts.remove('chart4')
-	elif name == 'ohlc':
+	elif name == 'ohlcv':
 		charts.remove('chart2')
 	elif name == 'rsi':
 		charts.remove('chart5')
@@ -120,15 +135,17 @@ def axis_sync(name, ochart, opts):
 		return
 	for chart in charts:
 		update_axis(chart, date)
-
+	if price is not None:
+		update_ob_axis(price)
 
 def chart1(pair):
 	jq("#echart1").show()
-	Objcharts['ob'] = window.echarts.init(document.getElementById("echart1"))
-	og = w_mod_graphs.OrderBook1(Objcharts['ob'])
+	Objcharts['chart1'] = window.echarts.init(document.getElementById("echart1"))
+	og = w_mod_graphs.OrderBook1('orderbook', Objcharts['chart1'])
 	og.title = pair + " orderbook"
 	og.market = pair
-	og.orders = Order_pos[pair]
+	if pair in Order_pos:
+		og.orders = Order_pos[pair]
 	if Last_Pair in ChartOb:
 		ChartData_ob[pair]['datazoom'] = [ChartOb[Last_Pair]['start'], ChartOb[Last_Pair]['end']]
 	og.load_data(ChartData_ob[pair])
@@ -136,7 +153,7 @@ def chart1(pair):
 
 def chart2(pair):
 	Objcharts['chart2'] = window.echarts.init(document.getElementById("echart2"))
-	og = w_mod_graphs.MarketTrades1('ohlc', Objcharts['chart2'], axis_sync)
+	og = w_mod_graphs.MarketTrades1('ohlcv', Objcharts['chart2'], axis_sync)
 	og.title = pair + " trades"
 	og.market = pair
 	if pair in Order_pos:
@@ -268,6 +285,7 @@ def incoming_data(data):
 		if data['open_positions'] is None:
 			return
 		Order_pos = {}
+		Order_count = {}
 		for d in data['open_positions']:
 			Order_id_list[d[1]] = d[0]
 			if d[2] in Order_count:
@@ -306,21 +324,21 @@ def incoming_data(data):
 
 	elif 'analysis_wavetrend' in data:
 		Last_Pair = data['analysis_wavetrend']['market']
-		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']['data']
+		ChartData_analisis1[data['analysis_wavetrend']['market']] = data['analysis_wavetrend']
 		chart3(data['analysis_wavetrend']['market'])
 
 	elif 'analysis_stoch_rsi' in data:
 		Last_Pair = data['analysis_stoch_rsi']['market']
-		ChartData_analisis2[data['analysis_stoch_rsi']['market']] = data['analysis_stoch_rsi']['data']
+		ChartData_analisis2[data['analysis_stoch_rsi']['market']] = data['analysis_stoch_rsi']
 		chart4(data['analysis_stoch_rsi']['market'])
 
 	elif 'analysis_rsi' in data:
 		Last_Pair = data['analysis_rsi']['market']
-		ChartData_analisis3[data['analysis_rsi']['market']] = data['analysis_rsi']['data']
+		ChartData_analisis3[data['analysis_rsi']['market']] = data['analysis_rsi']
 		chart5(data['analysis_rsi']['market'])
 
 	elif 'analysis_cci' in data:
 		Last_Pair = data['analysis_cci']['market']
-		ChartData_analisis4[data['analysis_cci']['market']] = data['analysis_cci']['data']
+		ChartData_analisis4[data['analysis_cci']['market']] = data['analysis_cci']
 		chart6(data['analysis_cci']['market'])
 

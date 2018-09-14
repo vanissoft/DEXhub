@@ -11,7 +11,8 @@ import json
 
 class graph_orderbook:
 
-	def __init__(self, objchart):
+	def __init__(self, name, objchart, axis_cb=None):
+		self.name = name
 		self.chart1 = objchart
 		self.query_url = None
 		self.market = ''
@@ -22,17 +23,26 @@ class graph_orderbook:
 		self.title = ''
 		self.orders = []
 		self.setoption_data = None
+		self.axispointer_cb = axis_cb
 		self.init()
 
 	def init(self):
 		print("graph_orderbook init")
 
 
+	def tooltip(self, params, ticker, callback):
+		#print("name  type   seriesname   value")
+		#for p in params:
+		#	print(p.name, p.componentType, p.seriesName, p.value)
+		if self.axispointer_cb is not None:
+			self.axispointer_cb(self.name, self.chart1, self.chart1.getOption())
+
 	def load_data(self, dat):
 		self.data = dat['data']
 		self.buy_data = [[r[1], r[3]] for r in self.data if r[0]=='buy']
 		self.sell_data = [[r[1], r[3]] for r in self.data if r[0]=='sell']
 
+		maxY = max([x[3] for x in self.data])
 		if self.title != "":
 			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}}})
 		self.chart1.setOption({"grid": {"show": False, 'borderColor': '#f00', "top": "0", "left": "10", "right": "10"}})
@@ -43,10 +53,11 @@ class graph_orderbook:
 		else:
 			dz_pos = [0,100]
 
+		self.chart1.setOption({"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross', "show": True}, "formatter": self.tooltip, "alwaysShowContent": True}})
+
 		self.chart1.setOption({
-			"tooltip": {"trigger": 'axis', "axisPointer": {"type": 'cross'}},
 			"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
-			"xAxis": {"min": None, "max": None, "type": 'value',
+			"xAxis": {"type": 'value',
 					"splitLine": {"lineStyle": {"color": '#333', "width": 1}},
 					"axisLine": {"show": False, "lineStyle": {"color": '#aaa', "width": 1}},
 					"axisTick": {"lineStyle": {"color": "#aaa"}}},
@@ -87,11 +98,16 @@ class graph_orderbook:
 					color = "#5baa25"
 				else:
 					color = "#f95155"
-				#TODO: replace second yAxis with a more suitable value
-				dat.append([{"name": "", "xAxis": o[1], "yAxis": 0, "symbol": "none",
-							"lineStyle": {"normal": {'type': 'solid', 'color': color}}},
-							{"name": "", "xAxis": o[1], "yAxis": 'max', "symbol": "none"}])
-			self.chart1.setOption({"series": [{"id": "b", "markLine": {"silent": True, "animation": False, "data": dat}}]})
+				if False:
+					dat.append([{"name": "", "xAxis": o[1], "yAxis": 0, "symbol": "none",
+								"lineStyle": {"normal": {'type': 'solid', 'color': color}}},
+								{"name": "", "xAxis": o[1], "yAxis": maxY, "symbol": "none"}])
+				dat.append({"xAxis": str(o[1]), "symbol": "none", "lineStyle": {"normal": {'type': 'solid', 'color': color}}})
+			print('>>>>orders:', dat)
+			self.chart1.setOption({"series": [{"name": "marks", "markLine": {"silent": True, "animation": False, "data": dat}}]})
+
+			#dat.append({"yAxis": o[1], "symbol": "none", "lineStyle": {"normal": {'type': 'solid', 'color': color}}})
+			#gdata["series"].append({"name": "marks", "type": "line", "markLine": {"data": dat}})
 
 
 
@@ -118,21 +134,19 @@ class graph_simple:
 		#print("name  type   seriesname   value")
 		#for p in params:
 		#	print(p.name, p.componentType, p.seriesName, p.value)
-		print(self.axispointer_cb)
 		if self.axispointer_cb is not None:
 			self.axispointer_cb(self.name, self.chart1, self.chart1.getOption())
 
 
 	def load_data(self, dat):
-		self.data = dat
-		print("graph loaddata", dat[:10])
-		self.limits_x = [dat[0][0], dat[-1][0]]
+		self.data = dat['data']
+		self.limits_x = [self.data[0][0], self.data[-1][0]]
 
 		if self.hard_limits_y is not None:
 			self.limits_y = self.hard_limits_y
 		else:
-			self.limits_y = [min(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None]),
-							 max(*[x[y] for x in dat for y in range(1, 5) if x[y] is not None])]
+			self.limits_y = [min(*[x[y] for x in self.data for y in range(1, 5) if x[y] is not None]),
+							 max(*[x[y] for x in self.data for y in range(1, 5) if x[y] is not None])]
 
 		if self.title != "":
 			self.chart1.setOption({"title": {"text": self.title, 'left': '20%', 'textStyle': {'color': '#aaa'}},
@@ -145,7 +159,7 @@ class graph_simple:
 		self.chart1.setOption({"toolbox": {"show": True, "feature": {"saveAsImage": {}}},
 			"xAxis": {"type": 'category',
 					  "axisLine": {"show": True, "lineStyle": {"color": '#aaa', "width": 0.5}},
-					  "data": [x[0] for x in dat]},
+					  "data": [x[0] for x in self.data]},
 			"yAxis": {"type": "value", "axisPointer": {"snap": True},
 					  	"scale": True, "splitArea": {"show": False},
 					  "min": self.limits_y[0], "max": self.limits_y[1],
@@ -155,35 +169,23 @@ class graph_simple:
 						  "axisTick": {"lineStyle": {"color": "#888", "width": 0.5}}},
 			"responsive": True,
 			"animation": False,
-			"series":
-				[{"id": "s1",
-					"name": "5min", "data": [x[1] for x in dat],
-				  	"smooth": False,
-						"type": 'line', "showSymbol": False,
-				  	"lineStyle": { "normal": { "color": '#FDA', "width": 1}},
-				},
-				{"id": "s2",
-					"name": "30min", "data": [x[2] for x in dat],
-					 "smooth": False,
-				 "type": 'line', "showSymbol": False,
-				 "lineStyle": {"normal": {"color": '#FC0', "width": 2}},
-				 },
-			   {"id": "s3",
-				"name": "1h", "data": [x[3] for x in dat],
-				"smooth": False,
-				"type": 'line', "showSymbol": False,
-				"lineStyle": {"normal": {"color": '#C83', "width": 2}},
-				 }],
 		"itemStyle": {"normal": {"color": '#999'}}
 		})
 
+		series_colors = ['#FDA', '#FC0', '#C83', '#B6A']
+		series_name = dat['timelapse']
+		series = []
+		for sernum in range(0, len(series_name)):
+			series.append({"id": "s"+str(sernum+1),	"name": series_name[sernum], "data": [x[sernum+1] for x in self.data], "smooth": False,
+						"type": 'line', "showSymbol": False, "lineStyle": {"normal": {"color": series_colors[sernum], "width": 1}}})
 
+		self.chart1.setOption({"series": series})
 
 
 class OrderBook1(graph_orderbook):
 
-	def __init__(self, objchart):
-		super().__init__(objchart)
+	def __init__(self, name, objchart, axis_cb=None):
+		super().__init__(name, objchart, axis_cb)
 
 
 
@@ -220,11 +222,11 @@ class MarketTrades1(graph_simple):
 					],
 			"responsive": True,
 			"animation": False,
-			"series":  [{"name": 'Dow-Jones index', "type": 'candlestick', "data": self.data['data'],
+			"series":  [{"name": 'ohlc', "type": 'candlestick', "data": self.data['data'],
 						 	"yAxisIndex": 0,
 							"itemStyle": {"normal": {"color": "#1a924b", "color0": "#8f4441", "borderColor": None,
 							"borderColor0": None}}},
-						{"name": "Volume", "type": "bar", "data": self.data['volume_data'],
+						{"name": "volume", "type": "bar", "data": self.data['volume_data'],
 						 "yAxisIndex": 1,
 						 "itemStyle": {"normal": {"color": "#5c5c5c"}}}]
 			}
@@ -238,24 +240,35 @@ class MarketTrades1(graph_simple):
 			print("w_mod_graph orders 2", self.orders)
 			omin = min([x[1] for x in self.orders])
 			omax = max([x[1] for x in self.orders])
-			dmin = min([x[0] for x in self.data['data']])
-			dmax = max([x[0] for x in self.data['data']])
+			#dmin = min([x[0] for x in self.data['data']])
+			dmin = self.data['data'][0][0]
+			for d in self.data['data']:
+				if min(d[0], d[1], d[2], d[3]) < dmin:
+					dmin = min(d[0], d[1], d[2], d[3])
+			#dmax = max([x[0] for x in self.data['data']])
+			dmax = self.data['data'][0][0]
+			for d in self.data['data']:
+				if max(d[0], d[1], d[2], d[3]) > dmax:
+					dmax = max(d[0], d[1], d[2], d[3])
 			gdata['yAxis'][0]['min'] = "dataMin"
 			gdata['yAxis'][0]['max'] = "dataMax"
 
-			print(omin, dmin, "max:", omax, dmax)
 			dat = []
 			for o in self.orders:
+				print(o[1], dmin, dmax)
 				if o[1] < dmin or o[1] > dmax:
 					continue
 				if o[0] == 'buy':
 					color = "#5baa25"
 				else:
 					color = "#f95155"
-				dat.append({"yAxis": o[1], "symbol": "none", "lineStyle": {"normal": {'type': 'solid', 'color': color}}})
-			gdata["series"].append({"name": "marks", "type": "line", "markLine": {"data": dat}})
+				dat.append({"yAxis": str(o[1]), "symbol": "none", "lineStyle": {"normal": {'type': 'solid', 'color': color}}})
+				print("order:", o)
+			gdata["series"].append({"name": "ohlc", "type": "line", "markLine": {"data": dat}})
 
 		self.chart1.setOption(gdata)
+
+
 
 
 class SeriesSimple(graph_simple):

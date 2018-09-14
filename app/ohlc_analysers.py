@@ -152,11 +152,12 @@ class Analyze(Common):
 			return False
 
 	def cci(self, name='cci', period=20):
-		if len(self.df_ohlc) > period:
+		try:
 			self._add_column_to_ohlc(name, ti.cci(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, period))
-			return True
-		else:
+		except Exception as err:
+			print("ohlc error>>>", err.__repr__())
 			return False
+		return True
 
 	def rsi(self, name='rsi', period=14):
 		if len(self.df_ohlc) > period:

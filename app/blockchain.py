@@ -325,12 +325,25 @@ async def get_orderbook(data):
 	return buys
 
 
-async def open_positions():
+async def open_positions(params=None):
 	global Assets
 	alist = await account_list()
 	if alist is None or len(alist) == 0:
 		return None
+	if params != None and 'refresh' in params and params['refresh']:
+		pass
+	else:
+		ob = Redisdb.get("balances_openpos")
+		if ob is not None:
+			return json.loads(ob)
+
 	load_assets()
+
+	rtn = Redisdb.get("settings_prefs_bases")
+	if rtn is None:
+		prefs = []
+	else:
+		prefs = json.loads(rtn.decode('utf8'))
 
 	ob = []
 	for account in alist:
@@ -367,8 +380,11 @@ async def open_positions():
 			price_inv = round(amount_quote/amount_base, Assets[quote][1])
 			if 'CVN' in pair:
 				print()
-			ob.append([account[0], lo['id'], pair, 'buy', amount_quote, quote, amount_base, base, price, Assets[quote][1], Assets[base][1]])
-			ob.append([account[0], lo['id'], pair_inv, 'sell', amount_base, base, amount_quote, quote, price_inv, Assets[base][1], Assets[quote][1]])
+			if (prefs.index(pair.split('/')[0]) if pair.split('/')[0] in prefs else 999) < (prefs.index(pair.split('/')[1]) if pair.split('/')[1] in prefs else 998):
+				ob.append([account[0], lo['id'], pair_inv, 'sell', amount_base, base, amount_quote, quote, price_inv, Assets[base][1], Assets[quote][1]])
+			else:
+				ob.append([account[0], lo['id'], pair, 'buy', amount_quote, quote, amount_base, base, price, Assets[quote][1], Assets[base][1]])
+
 	Redisdb.setex("balances_openpos", 300, json.dumps(ob))
 	return ob
 
@@ -376,5 +392,9 @@ async def open_positions():
 
 
 def order_delete(id, conn, account):
-	rtn = conn.cancel(id, account=account)
-	Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Success"}))
+	try:
+		rtn = conn.cancel(id, account=account)
+		Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Success"}))
+		return True
+	except:
+		return False

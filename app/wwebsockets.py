@@ -34,7 +34,6 @@ class Wscomm():
 			print("ws error evt.data", self.callback, evt.data[:100], evt.data[-100:])
 			print("ws error:", err.__repr__())
 		if self.callback is not None:
-			print("<<<callback")
 			self.callback(data)
 
 	def _on_close(self, evt):

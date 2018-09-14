@@ -119,9 +119,10 @@ class Operations_listener():
 		buys = await blockchain.get_orderbook(data)
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'orderbook': {'market': data['market'], 'date': arrow.utcnow().isoformat(), 'data': buys}}))
 
-
 	async def open_positions(self, data):
-		rtn = await blockchain.open_positions()
+		rtn = await blockchain.open_positions(data)
+		if 'QNO' in rtn:
+			print()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'open_positions': rtn}))
 
 	async def get_last_trades(self, data):
@@ -206,8 +207,11 @@ class Operations_listener():
 		if conn is None:
 			Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "WIF Error", 'error': True}))
 			return
-		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(data['id'])}))
-		blockchain.order_delete(id=data['id'], conn=conn, account=data['account'])
+		else:
+			if blockchain.order_delete(id=data['id'], conn=conn, account=data['account']):
+				Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} delete?".format(data['id'])}))
+			else:
+				Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "Order {0} deleted".format(data['id'])}))
 
 	async def master_unlock(self, dat):
 		if passwordlock.check_mp(dat['data']):
