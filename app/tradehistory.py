@@ -19,7 +19,7 @@ from collections import namedtuple
 
 import redis
 
-PROCESS_NUM = 8
+PROCESS_NUM = 2
 
 hdrs = {'User-Agent': 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/56.0.2924.76 Chrome/56.0.2924.76 Safari/537.36',
 		'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',

@@ -91,19 +91,24 @@ def axis_sync(name, ochart, opts):
 		print(name)
 		print(1, opts.axisPointer[0].value)
 		print(2, opts.xAxis[0].axisPointer.value)
-		print(2, opts.yAxis[0].axisPointer.value)
-		print(opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
+		print(3, opts.yAxis[0].axisPointer.value)
+		print(4, opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
 
 	if 'chart1' in Objcharts:
 		ob_opt = Objcharts['chart1'].getOption()
 		ChartOb[Last_Pair] = {'start': ob_opt.dataZoom[0].start, 'end': ob_opt.dataZoom[0].end}
 
 	price = None
+	date = None
 	if name == 'ohlcv':
 		price = opts.yAxis[0].axisPointer.value
+	elif name == 'orderbook':
+		price = opts.xAxis[0].axisPointer.value
 
-	date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
-	def update_axis(name, date):
+	if name != 'orderbook':
+		date = opts.xAxis[0].data[opts.xAxis[0].axisPointer.value]
+
+	def update_xaxis(name, date):
 		if name not in Objcharts or name == 'chart1':
 			return
 		opt = Objcharts[name].getOption()
@@ -119,29 +124,42 @@ def axis_sync(name, ochart, opts):
 		opt.xAxis[0].axisPointer.status = True
 		Objcharts['chart1'].setOption({"xAxis": opt.xAxis})
 
-	charts = ['chart' + str(n) for n in [2, 3, 4, 5, 6]]
+	def update_ohlcv_yaxis(price):
+		print(price)
+		opt = Objcharts['chart2'].getOption()
+		opt.yAxis[0].axisPointer.value = str(price)
+		opt.yAxis[0].axisPointer.show = True
+		opt.yAxis[0].axisPointer.status = True
+		Objcharts['chart2'].setOption({"yAxis": opt.yAxis})
 
-	if name == 'wavetrends':
-		charts.remove('chart3')
-	elif name == 'stoch-rsi':
-		charts.remove('chart4')
-	elif name == 'ohlcv':
-		charts.remove('chart2')
-	elif name == 'rsi':
-		charts.remove('chart5')
-	elif name == 'cci':
-		charts.remove('chart6')
-	else:
-		return
-	for chart in charts:
-		update_axis(chart, date)
+
+	if name in ['wavetrends', 'stoch_rsi', 'ohlcv', 'rsi', 'cci']:
+		charts = ['chart' + str(n) for n in [2, 3, 4, 5, 6]]
+
+		if name == 'wavetrends':
+			charts.remove('chart3')
+		elif name == 'stoch-rsi':
+			charts.remove('chart4')
+		elif name == 'ohlcv':
+			charts.remove('chart2')
+		elif name == 'rsi':
+			charts.remove('chart5')
+		elif name == 'cci':
+			charts.remove('chart6')
+
+		for chart in charts:
+			update_xaxis(chart, date)
+
 	if price is not None:
-		update_ob_axis(price)
+		if name == 'ohlcv':
+			update_ob_axis(price)
+		else:
+			update_ohlcv_yaxis(price)
 
 def chart1(pair):
 	jq("#echart1").show()
 	Objcharts['chart1'] = window.echarts.init(document.getElementById("echart1"))
-	og = w_mod_graphs.OrderBook1('orderbook', Objcharts['chart1'])
+	og = w_mod_graphs.OrderBook1('orderbook', Objcharts['chart1'], axis_sync)
 	og.title = pair + " orderbook"
 	og.market = pair
 	if pair in Order_pos:
@@ -297,6 +315,7 @@ def incoming_data(data):
 				Order_pos[d[2]] = [[d[4], d[8]]]
 
 	elif 'stats_pair' in data:
+		document["nav1"].innerHTML = ''
 		ChartData_pairs = data
 		dat = json.loads(data['stats_pair'])
 		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
