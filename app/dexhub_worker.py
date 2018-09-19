@@ -14,9 +14,6 @@ from config import *
 import asyncio
 import json
 import arrow
-import random
-import hashlib
-import base64
 import pickle
 import blockchain, accounts, ohlc_analysers, market_data
 import passwordlock
@@ -148,6 +145,7 @@ class Operations_listener():
 		accs = accounts.account_new(data)
 		Redisdb.set("settings_accounts", json.dumps(accs))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_account_list': accs}))
+		Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 
 	async def account_delete(self, data):
 		accs = accounts.account_delete(data)
@@ -169,6 +167,7 @@ class Operations_listener():
 		Redisdb.set("settings_misc", json.dumps(settings))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_misc': settings}))
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'message': "settings saved"}))
+		Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 
 	async def get_settings_misc(self, dummy):
 		rtn = Redisdb.get("settings_misc")
@@ -196,10 +195,12 @@ class Operations_listener():
 				if t not in settings:
 					settings.append(t)
 		Redisdb.rpush("datafeed", json.dumps({'module': Active_module, 'settings_prefs_bases': settings}))
+		Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 
 	async def save_settings_bases(self, dat):
 		Redisdb.set("settings_prefs_bases", json.dumps(dat['data']))
 		Redisdb.rpush("datafeed", json.dumps({'module': 'general', 'message': "Preferences saved.", 'error': False}))
+		Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 
 	async def order_delete(self, data):
 		# need account 
@@ -224,6 +225,7 @@ class Operations_listener():
 
 	async def marketpanels_savelayout(self, dat):
 		Redisdb.set("MarketPanels_layout", dat['data'])
+		Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 
 	async def marketpanels_loadlayout(self, dat):
 		default = [["OPEN.ETH/BTS", 1]]
@@ -248,6 +250,8 @@ class Operations_listener():
 	async def marketdatafeeder_step(self, dummy):
 		MDF.step()
 
+	async def data_store_save(self, dummy):
+		Redisdb.bgsave()
 
 	async def do_ops(self, op):
 		"""

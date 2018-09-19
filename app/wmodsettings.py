@@ -9,26 +9,24 @@
 
 from browser import window, document
 import json
+import wglobals
 
 jq = window.jQuery
 
 Module_name = "settings"
 Accounts = []
 
-Ws_comm = None
 
 BasePrio = {}
 BasePrioButton = {}
 LastBasePrio = 0
 
 def load():
-	Ws_comm.send({'call': 'settings_prefs_bases', 'module': "settings", 'operation': 'enqueue'})
-	Ws_comm.send({'call': 'account_list', 'module': "settings", 'operation': 'enqueue'})
-	Ws_comm.send({'call': 'get_settings_misc', 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'settings_prefs_bases', 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'account_list', 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'get_settings_misc', 'module': "settings", 'operation': 'enqueue'})
 
-def init(comm):
-	global Ws_comm
-	Ws_comm = comm
+def init(params):
 	#jq('#panel1').toggleClass('ld-loading')
 	load()
 	document["bNewAccount"].bind('click', click_new_account)
@@ -46,13 +44,13 @@ def click_new_account(ev):
 def click_save_misc(ev):
 	print("save misc")
 	dat = {'master_password': document['iMPpassphraseSet'].value}
-	Ws_comm.send({'call': 'save_misc_settings', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'save_misc_settings', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
 
 
 def click_save_account(ev):
 	jq('#form1').addClass('hidden')
 	dat = [document['iName'].value, document['iFamiliar'].value, document['iWifkey'].value]
-	Ws_comm.send({'call': 'account_new', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'account_new', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
 
 def click_save_cancel(ev):
 	jq('#form1').addClass('hidden')
@@ -60,7 +58,7 @@ def click_save_cancel(ev):
 def click_del_account(ev):
 	id = int(ev.target.id.split('_')[1])
 	print("del account", id)
-	Ws_comm.send({'call': 'account_delete', 'id': id, 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'account_delete', 'id': id, 'module': "settings", 'operation': 'enqueue'})
 
 def click_baseprio(ev):
 	global LastBasePrio
@@ -82,7 +80,7 @@ def click_baseprio_reset(ev):
 			document[b].innerHTML = '?'
 
 def click_baseprio_resetorder(ev):
-	Ws_comm.send({'call': 'settings_prefs_bases', 'orderbyops': 0, 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'settings_prefs_bases', 'orderbyops': 0, 'module': "settings", 'operation': 'enqueue'})
 
 def click_baseprio_save(ev):
 	print('click_baseprio_save')
@@ -95,7 +93,7 @@ def click_baseprio_save(ev):
 	lbase.sort(key=lambda x: x[1])
 	dat = [x[0] for x in lbase]
 	print(dat[:10])
-	Ws_comm.send({'call': 'save_settings_bases', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
+	wglobals.Ws_comm.send({'call': 'save_settings_bases', 'data': dat, 'module': "settings", 'operation': 'enqueue'})
 
 
 def onResize():

@@ -76,7 +76,7 @@ async def wscomms(request, ws):
 				dat = json.loads(data)
 				if 'operation' in dat:
 					if dat['operation'] == 'module_activation':
-						#TODO: sometimes need to be a saving
+						#TODO: persistence of Redis
 						#Redisdb.bgsave()
 						#Redisdb.rpush('operations', json.dumps({'call': 'data_store_save', 'module': 'general'}))
 						Redisdb.set('Active_module', dat['module'])
@@ -133,16 +133,21 @@ if __name__ == '__main__':
 	Develop = ('Z68x' in socket.getfqdn()) and True
 	proc1 = subprocess.Popen("redis-server --port "+str(REDIS_PORT), shell=True)
 	while True:
+		time.sleep(2)
 		try:
 			Redisdb = redis.StrictRedis(host='127.0.0.1', port=REDIS_PORT, db=0)
 			# cleanup
-			Redisdb.delete('messages')
-			Redisdb.delete('operations')
-			Redisdb.delete('operations_bg')
-			Redisdb.delete("datafeed")
 			break
 		except:
-			time.sleep(1)
+			pass
+
+	Redisdb.delete('messages')
+	Redisdb.delete('operations')
+	Redisdb.delete('operations_bg')
+	Redisdb.delete("datafeed")
+	#log out
+	Redisdb.set("master_unlocked", 0)
+	Redisdb.delete("master_hash")
 
 	proc2 = []
 	if not Develop:

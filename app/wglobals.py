@@ -8,6 +8,12 @@
 from browser import timer
 
 Timer1 = [None,None,None]
+Ws_comm = None
+Active_module = None
+Incoming_data = {}
+Menu_binds = {}
+Page_binds = {}
+Callbacks = {}
 
 def dummy():
 	pass

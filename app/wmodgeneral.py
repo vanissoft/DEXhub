@@ -8,7 +8,6 @@ from browser import window, document
 import json
 jq = window.jQuery
 Module_name = "general"
-Ws_comm = None
 
 class datastore():
 	def __init__(self):

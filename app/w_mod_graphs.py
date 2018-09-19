@@ -281,7 +281,7 @@ class SeriesSimple(graph_simple):
 
 class PieChart1(graph_orderbook):
 	def __init__(self, objchart):
-		super().__init__(objchart)
+		super().__init__('', objchart, None)
 
 	def load_data(self, dat):
 		dat = dat['data']

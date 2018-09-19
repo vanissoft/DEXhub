@@ -133,7 +133,7 @@ def axis_sync(name, ochart, opts):
 		Objcharts['chart2'].setOption({"yAxis": opt.yAxis})
 
 
-	if name in ['wavetrends', 'stoch_rsi', 'ohlcv', 'rsi', 'cci']:
+	if name in ['wavetrends', 'stoch-rsi', 'ohlcv', 'rsi', 'cci']:
 		charts = ['chart' + str(n) for n in [2, 3, 4, 5, 6]]
 
 		if name == 'wavetrends':

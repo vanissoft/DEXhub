@@ -28,23 +28,21 @@ def clear_cache():
 
 
 def account_list():
-	rtn = None
 	accounts = []
-	if rtn is None:
-		rtn = Redisdb.get("settings_accounts")
-		if rtn is not None and rtn.decode('utf8') != 'null':
-			accounts = json.loads(rtn.decode('utf8'))
-			if Redisdb.get('master_hash') is None:
-				for ac in accounts:
-					ac[2] = '*locked*'
-			else:
-				for ac in accounts:
-					try:
-						tmp = passwordlock.decrypt_data(ac[2])
-						if tmp is not None:
-							ac[2] = tmp
-					except:
-						ac[2] = "*error unlocking*"
+	rtn = Redisdb.get("settings_accounts")
+	if rtn is not None and rtn.decode('utf8') != 'null':
+		accounts = json.loads(rtn.decode('utf8'))
+		if Redisdb.get('master_hash') is None:
+			for ac in accounts:
+				ac[2] = '*locked*'
+		else:
+			for ac in accounts:
+				try:
+					tmp = passwordlock.decrypt_data(ac[2])
+					if tmp is not None:
+						ac[2] = tmp
+				except:
+					ac[2] = "*error unlocking*"
 	return accounts
 
 
