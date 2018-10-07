@@ -93,10 +93,13 @@ class MarketDataFeeder:
 					print("files readed", json.loads(rtn.decode('utf8'))['files'])
 				if os.path.isfile(df_file):
 					print("read", df_file)
-					df = pd.read_parquet(df_file)
-					cls.Datastores_pair[pair]['df'] = df
-					cls.Datastores_pair[pair]['range'] = [arrow.get(df.index.min()), arrow.get(df.index.max())]
-					cls.Datastores_pair[pair]['precharged'] = True
+					try:
+						df = pd.read_parquet(df_file)
+						cls.Datastores_pair[pair]['df'] = df
+						cls.Datastores_pair[pair]['range'] = [arrow.get(df.index.min()), arrow.get(df.index.max())]
+						cls.Datastores_pair[pair]['precharged'] = True
+					except Exception as err:
+						print('error while reading', df_file)
 		print('precharge')
 
 	@classmethod

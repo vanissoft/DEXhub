@@ -32,6 +32,7 @@ ${head.html}
                     <li class=" profil-link">
                         <button id="bShowStatus" type="button" class="btn btn-default">Status</button>
                     </li>
+                    <button id="bShowAlerts1" type="button" class="btn btn-default">Alerts</button>
 
                     <li class="dropdown">
                         <a role="button" id="link_master_password" data-toggle="modal" data-target="#modal_master_password"> Unlock
@@ -48,7 +49,7 @@ ${head.html}
     <!-- End navigation-->
 
 
-    <!-- Unlock modal-->
+    <!-- pass modal-->
     <section class="content">
         <div class="modal fade" id="modal_master_password" tabindex="-1" role="dialog" aria-hidden="true" style="display: none;">
             <div class="modal-dialog">
@@ -73,40 +74,65 @@ ${head.html}
         </div>
     </section>
     <!-- End main content-->
-
-                        <div class="modal-example">
-
-                            <style>
-                                    .modal-example .modal { position: absolute; top: auto; right: 1%; bottom: 1%; left: auto; z-index: 1; display: block; }
-                                </style>
-
-                            <div class="modal hidden" id="infopanel1" tabindex="-1" role="dialog">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-body">
-                                            <h4 class="m-t-none">Message Panel</h4>
-                                            <p>Activity's queue</p>
-                                            <table  class="table m-t-md">
-                                                <thead>
-                                                <tr>
-                                                    <th>Queue</th>
-                                                    <th>Activity</th>
-                                                </tr>
-                                                </thead>
-                                                <tbody id="status_rows">
-                                                <tr>
-                                                    <td>Main</td>
-                                                    <td>No data....</td>
-                                                </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
+        <div class="modal hidden" id="infopanel1" tabindex="-1" role="dialog" style="position: absolute; top: auto; right: auto; bottom: 10%; left: 1%; z-index: 1; display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <h4 class="m-t-none">Message Panel</h4>
+                        <p>Activity's queue</p>
+                        <table  class="table m-t-md">
+                            <thead>
+                            <tr>
+                                <th>Queue</th>
+                                <th>Activity</th>
+                            </tr>
+                            </thead>
+                            <tbody id="status_rows">
+                            <tr>
+                                <td>Main</td>
+                                <td>No data....</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
+        </div>
+
+
+        <div class="modal hidden" id="mainalertpanel1" tabindex="-1" role="dialog" aria-hidden="true" style="position: absolute; top: auto; right: auto; bottom: 1%; left: 1%; z-index: 1; display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header text-center">
+                        <h4 class="modal-title">Modal title</h4>
+                        <small>Lorem Ipsum is simply dummy text of the printing and typesetting industry.</small>
+                    </div>
+                    <div class="modal-body">
+                        <h4 class="modal-title">Add alert</h4>
+                        <p>Activity's queue</p>
+                        <table  class="table m-t-md">
+                            <thead>
+                            <tr>
+                                <th>Queue</th>
+                                <th>Activity</th>
+                            </tr>
+                            </thead>
+                            <tbody id="status_rows">
+                            <tr>
+                                <td>Main</td>
+                                <td>No data....</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-accent">Save changes</button>
+                        </div>
+                </div>
+            </div>
+        </div>
+
 
 </div>
 <!-- End wrapper-->

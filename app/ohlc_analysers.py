@@ -142,20 +142,21 @@ class Analyze(Common):
 			return False
 
 	def stoch_rsi(self, name='stoch_rsi', kp=14, ksp=3, d=3):
-		if len(self.df_ohlc) > kp:
+		try:
 			if 'rsi' not in self.df_ohlc.columns:
 				self._add_column_to_ohlc("rsi", ti.rsi(self.df_ohlc.priceclose.values, kp))
 			v = self.df_ohlc.rsi.dropna().values
 			self._add_column_to_ohlc(name, ti.stoch(v, v, v, kp, ksp, d))
 			return True
-		else:
+		except Exception as err:
+			print("stoch_rsi error>>>", err.__repr__())
 			return False
 
 	def cci(self, name='cci', period=20):
 		try:
 			self._add_column_to_ohlc(name, ti.cci(self.df_ohlc.pricehigh.values, self.df_ohlc.pricelow.values, self.df_ohlc.priceclose.values, period))
 		except Exception as err:
-			print("ohlc error>>>", err.__repr__())
+			print("cci error>>>", err.__repr__())
 			return False
 		return True
 

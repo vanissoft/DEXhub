@@ -31,9 +31,10 @@ class graph_orderbook:
 
 
 	def tooltip(self, params, ticker, callback):
-		#print("name  type   seriesname   value")
-		#for p in params:
-		#	print(p.name, p.componentType, p.seriesName, p.value)
+		if False:
+			print("name  type   seriesname   value")
+			for p in params:
+				print(p.name, p.componentType, p.seriesName, p.value)
 		if self.axispointer_cb is not None:
 			self.axispointer_cb(self.name, self.chart1, self.chart1.getOption())
 
@@ -108,6 +109,8 @@ class graph_orderbook:
 
 			#dat.append({"yAxis": o[1], "symbol": "none", "lineStyle": {"normal": {'type': 'solid', 'color': color}}})
 			#gdata["series"].append({"name": "marks", "type": "line", "markLine": {"data": dat}})
+		else:
+			self.chart1.setOption({"series": [{"name": "marks", "markLine": {"silent": True, "animation": False, "data": []}}]})
 
 
 

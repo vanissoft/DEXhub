@@ -52,6 +52,7 @@ def init(comm):
 
 	document["bRefresh"].bind('click', refresh)
 	document["bRefreshAll"].bind('click', refresh_all)
+	document["bBot1"].bind('click', show_botpingpong1)
 
 def refresh(ev):
 	#TODO: pair list must refresh order numbers
@@ -87,12 +88,12 @@ def axis_sync(name, ochart, opts):
 			if l[1] >= txt:
 				return l[0]
 		return len(list1)-1
-	if False:  #debug
+	if True:  #debug
 		print(name)
-		print(1, opts.axisPointer[0].value)
-		print(2, opts.xAxis[0].axisPointer.value)
-		print(3, opts.yAxis[0].axisPointer.value)
-		print(4, opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
+		#print(1, opts.axisPointer[0].value)
+		#print(2, opts.xAxis[0].axisPointer.value)
+		#print(3, opts.yAxis[0].axisPointer.value)
+		#print(4, opts.xAxis[0].data[opts.xAxis[0].axisPointer.value])
 
 	if 'chart1' in Objcharts:
 		ob_opt = Objcharts['chart1'].getOption()
@@ -125,7 +126,6 @@ def axis_sync(name, ochart, opts):
 		Objcharts['chart1'].setOption({"xAxis": opt.xAxis})
 
 	def update_ohlcv_yaxis(price):
-		print(price)
 		opt = Objcharts['chart2'].getOption()
 		opt.yAxis[0].axisPointer.value = str(price)
 		opt.yAxis[0].axisPointer.show = True
@@ -156,6 +156,7 @@ def axis_sync(name, ochart, opts):
 		else:
 			update_ohlcv_yaxis(price)
 
+
 def chart1(pair):
 	jq("#echart1").show()
 	Objcharts['chart1'] = window.echarts.init(document.getElementById("echart1"))
@@ -167,6 +168,11 @@ def chart1(pair):
 	if Last_Pair in ChartOb:
 		ChartData_ob[pair]['datazoom'] = [ChartOb[Last_Pair]['start'], ChartOb[Last_Pair]['end']]
 	og.load_data(ChartData_ob[pair])
+
+	def froga(ev):
+		print('click')
+
+	document.getElementById("echart1").addEventListener('click', froga)
 
 
 def chart2(pair):
@@ -285,7 +291,7 @@ def create_tab(num, name, market, badge1):
 	document["nav1"].innerHTML += tab1
 	MarketTab[market] = num
 	MarketTab2[num] = market
-	jq('.nav-tabs a').on('shown.bs.tab', on_tabshown)
+	jq('#nav1 a').on('shown.bs.tab', on_tabshown)
 
 
 
@@ -313,6 +319,8 @@ def incoming_data(data):
 			else:
 				Order_count[d[2]] = 1
 				Order_pos[d[2]] = [[d[4], d[8]]]
+		print('----------------')
+		print(data['open_positions'])
 
 	elif 'stats_pair' in data:
 		document["nav1"].innerHTML = ''
@@ -361,3 +369,6 @@ def incoming_data(data):
 		ChartData_analisis4[data['analysis_cci']['market']] = data['analysis_cci']
 		chart6(data['analysis_cci']['market'])
 
+
+def show_botpingpong1(ev):
+	jq('#mbotpingpong1').toggleClass('hidden')

@@ -7,6 +7,7 @@
         <div class="col-md-9">
                 <button id="bRefresh" class="btn btn-default">Refresh</button>
                 <button id="bRefreshAll" class="btn btn-default">Clear cache</button>
+                <button id="bBot1" class="btn btn-default">Bot ping-pong 1</button>
         </div>
     </div>
 </div>
@@ -40,6 +41,88 @@
         </div>
         <div class="col-md-6">
             <div id="echart6" style="width:100%; height:250px;"></div>
+        </div>
+    </div>
+</div>
+
+
+<!-- TODO: put in bots_modals.html-->
+<div class="modal hidden" id="mbotpingpong1" tabindex="-1" role="dialog" aria-hidden="true" style="position: absolute; top: auto; right: auto; bottom: 1%; left: -9%; z-index: 1; display: block;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-body">
+                <h4 class="modal-title">Add alert</h4>
+                <div class="tabs-container">
+                    <div class="tabs-left">
+                        <ul class="nav nav-tabs">
+                            <li class="active"><a data-toggle="tab" href="#tab-1">Account settings</a></li>
+                            <li class=""><a data-toggle="tab" href="#tab-2">Preferences</a></li>
+                            <li class=""><a data-toggle="tab" href="#tab-3">Misc settings</a></li>
+                        </ul>
+                        <div class="tab-content ">
+                            <div id="tab-1" class="tab-pane active">
+                                <div class="panel-body">
+                                    <strong class="c-white">Account related settings</strong>
+                                    <p>Multiple accounts can be entered for a consolidation of the balances1.</p>
+                                    <br>
+                                    <div id="table1" class="table-responsive">
+                                    </div>
+                                    <br>
+                                    <button id="bNewAccount" class="btn btn-accent btn-sm">New Account</button>
+                                    <br><br>
+                                    <div id="form1" onsubmit="return false;" class="form-horizontal form-group-separated hidden" style="margin-left:40px;margin-right:80px;">
+                                        <div class="form-group"><label for="iName">Bitshares account name</label> <input type="text" class="form-control" id="iName" placeholder="Name">
+                                            <p class="help-block">Must be a real account in Bitshares</p></div>
+                                        <div class="form-group"><label for="iFamiliar">Familiar name</label> <input type="email" class="form-control" id="iFamiliar" placeholder="Name">
+                                            <p class="help-block">Used for display</p></div>
+                                        <div class="form-group"><label for="iWifkey">Wif key</label> <input type="password" class="form-control disabled" id="iWifkey" placeholder="wif format">
+                                            <p class="help-block">Key will be stored in UNencrypted form</p></div>
+                                        <button id="bSave" class="btn btn-accent">Save</button>
+                                        <button id="bCancel" class="btn btn-default">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="tab-2" class="tab-pane">
+                                <div class="panel-body">
+                                    <strong class="c-white">Bases priority</strong>
+                                    <p>Preferences for pair composition. (Quote/Base)</p>
+                                    <button id="bBasesReset" class="btn btn-default">Reset</button>
+                                    <button id="bBasesResetOrder" class="btn btn-default">Order by use</button>
+                                    <button id="bBasesSave" class="btn btn-accent" type="button"><i class="fa fa-upload"></i> <span class="bold">Save</span></button>
+                                    <br>
+                                    <div class="col-lg-6">
+                                        <br>
+                                        <div id="table2" class="table-responsive"></div>
+                                        <br>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="tab-3" class="tab-pane">
+                                <div class="panel-body">
+                                    <strong class="c-white">Connection settings</strong>
+                                    <p>wss://bitshares.openledger.info/ws</p>
+                                    <p>Node preferences</p>
+                                    <br>
+                                    <div class="form-group"><label for="iMPpassphraseSet">Master password</label>
+                                        <div class="form-inline"> <input type="text" class="form-control" id="iMPpassphraseSet" placeholder="passphrase">
+                                            <span> - Hash: </span><label id="lMPHash">password hash</label>
+                                        </div>
+                                        <p class="help-block">Password for unlock and encrypt Wif keys</p></div>
+                                    <br>
+                                    <strong class="c-white">Misc settings</strong>
+                                    <p>Another settings</p>
+                                    <br>
+                                    <button id="bSaveMisc" class="btn btn-accent">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-accent">Save changes</button>
+            </div>
         </div>
     </div>
 </div>

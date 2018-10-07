@@ -20,6 +20,7 @@ from collections import namedtuple
 import redis
 
 PROCESS_NUM = 4
+DEBUG = False
 
 hdrs = {'User-Agent': 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/56.0.2924.76 Chrome/56.0.2924.76 Safari/537.36',
 		'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -43,9 +44,9 @@ def read_trade_history():
 	data = None
 
 	#rq = 'http://185.208.208.184:5000/' + \
-	#rq = 'http://95.216.32.252:5000/' + \
+	#rq = 'https://wrapper.elasticsearch.bitshares.ws/' + \
 	#rq = 'https://eswrapper.bitshares.eu/' + \
-	rq = 'https://wrapper.elasticsearch.bitshares.ws/' + \
+	rq = 'http://95.216.32.252:5000/' + \
 	'get_account_history?operation_type=4&size=1000&' +\
 			'from_date={}&to_date={}&'.format(*date_range) +\
 			'sort_by=-block_data.block_time&type=data&agg_field=operation_type'
@@ -134,14 +135,17 @@ def start():
 	Redisdb = redisdb()
 	Redisdb.delete("data")
 	Redisdb.delete('loaded')
-	while True:
-		procs = [Process(target=read_trade_history) for x in range(PROCESS_NUM)]
-		for p in procs:
-			p.start()
-		for p in procs:
-			p.join()
-		if Redisdb.llen("queue") == 0:
-			break
+	if DEBUG:
+		read_trade_history()
+	else:
+		while True:
+			procs = [Process(target=read_trade_history) for x in range(PROCESS_NUM)]
+			for p in procs:
+				p.start()
+			for p in procs:
+				p.join()
+			if Redisdb.llen("queue") == 0:
+				break
 	Redisdb.bgsave()
 	print("end of work")
 	print("data len:", Redisdb.llen("data"))
@@ -174,12 +178,14 @@ def postProcess1(from_idx=0, to_idx=0):
 		for d in data:
 			data_list.append(order._make(d))
 	df = pd.DataFrame(data_list)
-	print("ok")
-	print("date_range:", df.block_time.min(), df.block_time.max())
 
-	if df is None:
+	if df is None or len(df) == 0:
 		print("Nothing to do")
 		return
+	else:
+		print("ok")
+		print("date_range:", df.block_time.min(), df.block_time.max())
+
 	#order = namedtuple('order_filled', ['block_num', 'block_time', 'order_id', 'account_id', 'is_maker',
 	#									'pays_asset', 'pays_amount', 'receives_asset', 'receives_amount'])
 	print("drop duplicates", end=' ')
@@ -205,6 +211,9 @@ def postProcess2(df):
 			assets = pickle.load(h)
 	except:
 		assets = {}
+
+	if df is None or len(df) == 0:
+		return
 
 	s1 = set(df.pays_asset.value_counts().index.tolist())
 	s2 = set(df.receives_asset.value_counts().index.tolist())
@@ -263,6 +272,9 @@ def postProcess3():
 	for f in files:
 		print(f)
 		df.append(pd.read_parquet(f))
+	if len(df) == 0:
+		return
+
 	df2 = pd.concat(df)
 	if len(df) > 1:
 		df2 = df2.drop_duplicates()

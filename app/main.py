@@ -36,32 +36,47 @@ Compress(app)
 @app.middleware('request')
 async def req1(req):
 	print("req1", req.url)
-	if '/get/' in req.path or '/do/' in req.path or '/post/' in req.path or '/comm' in req.path:
+	if '/comm' in req.path or '/module/' in req.path:
 		return None
+	return await serve_content(req)
+
+async def serve_content(req):
 	path = req.path.split("&")[0]
 	ext = path.split('.')[-1]
 	if ext in ('mp3', 'js', 'jpg', 'css', 'ttf', 'png', 'woff', 'woff2', 'ico', 'gif', 'map', 'mem', 'pck', 'mp4', 'csv'):
 		pfil = './web' + path
-		return await response_file(location=pfil, headers={"cache-control": "public,max-age=216000"})
+		rtn = await response_file(location=pfil, headers={"cache-control": "public,max-age=216000"})
 	elif ext in 'html':
 		pfil = './web' + path
 		tmp = Render(pfil)
 		rtn = await tmp.parse()
-		return response_html(body=rtn, headers={"cache-control": "public,max-age=216000"})
+		rtn = response_html(body=rtn, headers={"cache-control": "public,max-age=216000"})
 	elif ext in 'py':
 		pfil = '.' + path
 		# /w*.py y /vs_widgets will be served not server side .py
 		if (path[:2] == '/w' or "/vs_widgets" in path) and ".." not in path:
-			return await response_file(pfil, headers={"cache-control": "public,max-age=0"})
+			rtn = await response_file(pfil, headers={"cache-control": "public,max-age=0"})
 		else:
-			return response_text("error")
+			rtn = response_text("error")
 	else:
-		return response_text("error")
+		rtn = response_text("error")
+	return rtn
 
 
-@app.route('/<tag>')
+
+@app.route('/module/<tag>')
 async def route1(req, tag):
-	return response_text(tag)
+	print(req)
+	print('module', tag)
+	print('params', req.raw_args)
+	if '&' in tag:
+		module = tag.split('&')[0]
+	else:
+		module = tag
+	pfil = './web/' + module + '.html'
+	tmp = Render(pfil)
+	rtn = await tmp.parse()
+	return response_html(body=rtn, headers={"cache-control": "public,max-age=216000"})
 
 
 @app.websocket('/comm')
@@ -71,7 +86,7 @@ async def wscomms(request, ws):
 		data = await ws.recv()
 		if data is not None:
 			Client_comm = ws
-			print('1Received from client: ' + data)
+			print('Asking for: ' + data)
 			try:
 				dat = json.loads(data)
 				if 'operation' in dat:
@@ -130,7 +145,8 @@ async def periodic():
 
 if __name__ == '__main__':
 	# Develop switch between queue and direct work. True for be able to put Breakpoints
-	Develop = ('Z68x' in socket.getfqdn()) and True
+	Develop = True
+
 	proc1 = subprocess.Popen("redis-server --port "+str(REDIS_PORT), shell=True)
 	while True:
 		time.sleep(2)

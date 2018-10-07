@@ -20,9 +20,8 @@ Cnt = 0
 
 
 def html_loaded(url, rtn):
-	page = url.split('&')[0]
-	print("url", url)
-	print("url", rtn)
+	page = url.split('&')[0].split('/')[2]
+	print("loaded url", url, "page", page)
 	document['page_container'].innerHTML = rtn
 	try:
 		wglobals.Active_module = __import__(wglobals.Page_binds[page])
@@ -48,12 +47,12 @@ def menu_click(ev):
 	wglobals.clear_timer(0)
 	jq("ul > li").removeClass('active')
 	jq(ev.target.parent).addClass('active')
-	query(wglobals.Menu_binds[ev.target.id], html_loaded)
+	query(wglobals.Menu_binds[ev.target.id].split('.')[0], html_loaded)
 
 
 def query(url, callback):
 	global Cnt
-	url = url+"&nonce="+str(Cnt)
+	url = "/module/"+url+"&nonce="+str(Cnt)
 	wglobals.Callbacks[url] = callback
 	req = ajax.ajax()
 	req.open('GET', url, True)

@@ -17,49 +17,49 @@ import wmodules
 jq = window.jQuery
 
 # page, link in navigation.html, module
-Binds = [['dashboard.html', 'wmoddashboard'],
-		['limit_orders.html', 'wmodlimitorders'],
-		['marketpanels.html', 'wmodmarketpanels'],
-		['dataTables.html', 'wmoddatatables'],
-		['settings.html', 'wmodsettings'],
-		['balances.html', 'wmodbalances'],
-		['order_repos.html', 'wmodorderrepos'],
-		['limit_orders.html', 'wmodlimitorders'],
-		['trades_statistics.html', 'wmodtstats'],
-		['tradehistory.html', 'wmodtradehistory'],
-		['market_charts.html', 'wmodmarketcharts'],
-		['metrics.html', ''],
-		['usage.html', ''],
-		['activity.html', ''],
-		['panels.html', ''],
-		['profile.html', ''],
-		['contacts.html', ''],
-		['projects.html', ''],
-		['support.html', ''],
-		['nestablelist.html', ''],
-		['timeline.html', ''],
-		['login.html', ''],
-		['register.html', ''],
-		['forgotpassword.html', ''],
-		['typography.html', ''],
-		['icons.html', ''],
-		['buttons.html', ''],
-		['tabs.html', ''],
-		['modals.html', ''],
-		['alerts.html', ''],
-		['loaders.html', ''],
-		['gridSystem.html', ''],
-		['tableStyles.html', ''],
-		['formElements.html', ''],
-		['autocomplete.html', ''],
-		['controls.html', ''],
-		['textEditor.html', ''],
-		['flotCharts.html', ''],
-		['chartJs.html', ''],
-		['sparkline.html', ''],
-		['datamaps.html', ''],
-		['versions.html', ''],
-		['error.html', '']
+Binds = [['dashboard', 'wmoddashboard'],
+		['limit_orders', 'wmodlimitorders'],
+		['marketpanels', 'wmodmarketpanels'],
+		['dataTables', 'wmoddatatables'],
+		['settings', 'wmodsettings'],
+		['balances', 'wmodbalances'],
+		['order_repos', 'wmodorderrepos'],
+		['limit_orders', 'wmodlimitorders'],
+		['trades_statistics', 'wmodtstats'],
+		['tradehistory', 'wmodtradehistory'],
+		['market_charts', 'wmodmarketcharts'],
+		['metrics', ''],
+		['usage', ''],
+		['activity', ''],
+		['panels', ''],
+		['profile', ''],
+		['contacts', ''],
+		['projects', ''],
+		['support', ''],
+		['nestablelist', ''],
+		['timeline', ''],
+		['login', ''],
+		['register', ''],
+		['forgotpassword', ''],
+		['typography', ''],
+		['icons', ''],
+		['buttons', ''],
+		['tabs', ''],
+		['modals', ''],
+		['alerts', ''],
+		['loaders', ''],
+		['gridSystem', ''],
+		['tableStyles', ''],
+		['formElements', ''],
+		['autocomplete', ''],
+		['controls', ''],
+		['textEditor', ''],
+		['flotCharts', ''],
+		['chartJs', ''],
+		['sparkline', ''],
+		['datamaps', ''],
+		['versions', ''],
+		['error', '']
 		 ]
 
 wglobals.Menu_binds = {'link_'+k.split('.')[0].lower(): k for (k,v) in Binds}
@@ -102,12 +102,12 @@ wglobals.set_timer(0, init_data, 0.5)
 
 def master_unlock(ev):
 	print("unlock:", document["iMPpasshrase"].value)
-	#document['MPerror'].innerHTML = "Password doesn't match?<br>Not implemented"
 	wglobals.Ws_comm.send({'call': 'master_unlock', 'data': document["iMPpasshrase"].value, 'module': "general", 'operation': 'enqueue'})
 
 
 def show_status(ev):
 	jq('#infopanel1').toggleClass('hidden')
+
 
 # bind menu links
 for bind in wglobals.Menu_binds.items():
