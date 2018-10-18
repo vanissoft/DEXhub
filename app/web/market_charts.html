@@ -2,9 +2,21 @@
 <div class="row">
     <div class="col-lg-12">
         <div class="col-md-3" style="align: right">
-            <span>Base Volume</span>
+            <div class="btn-group">
+                <button data-toggle="dropdown" class="btn btn-primary dropdown-toggle">Sort by ... <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    <li><a id="sortbyops">Operations</a></li>
+                    <li class="divider"></li>
+                    <li><a id="sortbyorders">Orders presence</a></li>
+                </ul>
+            </div>
+            <div class="btn-group">
+                <button data-toggle="dropdown" class="btn btn-primary dropdown-toggle">Filter quote... <span class="caret"></span></button>
+                <ul class="dropdown-menu" id="filterquote">
+                </ul>
+            </div>
         </div>
-        <div class="col-md-9">
+		<div class="col-md-9">
                 <button id="bRefresh" class="btn btn-default">Refresh</button>
                 <button id="bRefreshAll" class="btn btn-default">Clear cache</button>
                 <button id="bBot1" class="btn btn-default">Bot ping-pong 1</button>

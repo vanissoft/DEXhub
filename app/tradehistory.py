@@ -6,6 +6,7 @@
 
 '''
 
+
 from multiprocessing import Process
 
 import datetime
@@ -136,7 +137,10 @@ def start():
 	Redisdb.delete("data")
 	Redisdb.delete('loaded')
 	if DEBUG:
-		read_trade_history()
+		while True:
+			read_trade_history()
+			if Redisdb.llen("queue") == 0:
+				break
 	else:
 		while True:
 			procs = [Process(target=read_trade_history) for x in range(PROCESS_NUM)]
@@ -354,8 +358,12 @@ if __name__ == "__main__":
 		print(sys.argv)
 	print("Starting")
 	#tmp_split()
-	setup()
-	#setup(arrow.get('2018-08-01'), 7)
+	if not DEBUG:
+		setup()
+	else:
+		for cache in [x for x in Redisdb.hgetall('datastores_pair').keys()]:
+			Redisdb.hdel('datastores_pair', cache)
+		setup(arrow.get('2018-10-17 01:00'), 0.3)
 	start()
 	df = postProcess1()
 	postProcess2(df)

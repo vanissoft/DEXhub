@@ -38,6 +38,8 @@ Order_id_list = {}  # order's ids and account
 Order_id_deleted = [] # list of deleted order's ids
 Ws_comm = None
 Last_Pair = ''
+Sort_by = 0
+Filter_byQuote = ''
 
 
 def init(comm):
@@ -53,6 +55,10 @@ def init(comm):
 	document["bRefresh"].bind('click', refresh)
 	document["bRefreshAll"].bind('click', refresh_all)
 	document["bBot1"].bind('click', show_botpingpong1)
+	document["sortbyops"].bind('click', sort_byops)
+	document["sortbyorders"].bind('click', sort_byorders)
+
+
 
 def refresh(ev):
 	#TODO: pair list must refresh order numbers
@@ -269,6 +275,7 @@ def ask_data(market):
 
 
 
+
 def on_tabshown(ev):
 	global Last_Pair
 
@@ -281,7 +288,6 @@ def on_tabshown(ev):
 
 
 def create_tab(num, name, market, badge1):
-	#TODO: +badge with orders
 	if len(Order_count) > 0:
 		pass
 	if market in Order_count:
@@ -301,11 +307,13 @@ def onResize():
 
 
 def incoming_data(data):
-	global Order_pos, Order_id_list, ChartData_pairs, Order_count
+	global Order_pos, Order_id_list, ChartData_pairs, Order_count, Filter_byQuote
 	if data['module'] != Module_name and data['module'] != 'general':  # ignore if nothing to do here
 		return
 	print("wmodmarketcharts incoming", list(data.keys()))
 	if 'open_positions' in data:
+		Filter_byQuote = ''
+		# [['account', '1.7.167825126', 'OPEN.XSD/BTS', 'buy', 89.9919, '1.3.4303', 9, '1.3.0', 0.10001, 6, 5]]
 		if data['open_positions'] is None:
 			return
 		Order_pos = {}
@@ -319,23 +327,47 @@ def incoming_data(data):
 			else:
 				Order_count[d[2]] = 1
 				Order_pos[d[2]] = [[d[4], d[8]]]
-		print('----------------')
-		print(data['open_positions'])
+
+		print('open positions ----------------')
+		print(data['open_positions'][:5])
+
 
 	elif 'stats_pair' in data:
 		document["nav1"].innerHTML = ''
-		ChartData_pairs = data
 		dat = json.loads(data['stats_pair'])
-		cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price']
-		print(dat[:5])
+		dat = [x+[0] for x in dat]
+		ChartData_pairs = data
+		for pair in Order_count:
+			for i in range(0, len(dat)):
+				if dat[i][0] == pair:
+					dat[i][5] = Order_count[pair]
+
+		if Sort_by == 0:
+			dat.sort(key=lambda x: x[1], reverse=True)
+		elif Sort_by == 1:
+			dat.sort(key=lambda x: x[3] if x[5] > 0 else x[3]*-1, reverse=True)
+
+		ChartData_pairs['stats_pair'] = json.dumps(dat)
+
+		if Filter_byQuote != '':
+			dat = [d for d in dat if '/'+Filter_byQuote in d[0]]
+		print("filter", dat[:2], '/'+Filter_byQuote)
+
+		#cols = ['Pair', 'Ops', 'Pays amount', 'Receives amount', 'Price', 'orders]
+		print("pairs:", dat[:5])
+		qtokens = set()
 		for t in enumerate(dat):
+			qtokens.add(t[1][0].split('/')[1])
 			create_tab(t[0]+2, t[1][0], t[1][0], "{0:,.2f}".format(t[1][3]))
 
-		# enqueue orderbooks query
-		#TODO: temporally deactivated
-		if False:
-			for l in dat[:3]:
-				Ws_comm.send({'call': 'get_orderbook', 'market': l[0], 'module': Module_name, 'operation': 'enqueue_bg'})
+		if Filter_byQuote == '':
+			ltokens = ''
+			for token in qtokens:
+				ltokens += '<li><a href="#fq_{}">{}</a></li>'.format(token, token)
+			document["filterquote"].innerHTML = ltokens
+
+			jq('#filterquote a').on('click', on_filterquote)
+
 
 	elif 'orderbook' in data:
 		market = data['orderbook']['market']
@@ -372,3 +404,19 @@ def incoming_data(data):
 
 def show_botpingpong1(ev):
 	jq('#mbotpingpong1').toggleClass('hidden')
+
+def sort_byops(ev):
+	global Sort_by
+	Sort_by = 0
+	incoming_data(ChartData_pairs)
+
+def sort_byorders(ev):
+	global Sort_by
+	Sort_by = 1
+	incoming_data(ChartData_pairs)
+
+def on_filterquote(ev):
+	global Filter_byQuote
+	Filter_byQuote = ev.target.hash[4:]
+	incoming_data(ChartData_pairs)
+

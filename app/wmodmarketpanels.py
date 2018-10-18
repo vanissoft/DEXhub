@@ -208,7 +208,7 @@ def incoming_data(data):
 				jq("#loading_" + p).hide()
 				jq("#echart_" + p).show()
 				obj = window.echarts.init(document.getElementById("echart_"+p))
-				og = w_mod_graphs.OrderBook1(obj)
+				og = w_mod_graphs.OrderBook1('orderbook', obj)
 				og.market = market
 				if market in Order_pos:
 					og.orders = Order_pos[market]

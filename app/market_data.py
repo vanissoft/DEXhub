@@ -72,10 +72,10 @@ class MarketDataFeeder:
 				if cls.Datastores_account[acc]['precharged']:
 					continue
 				df_file = 'datastores_account_{}.parquet'.format(acc)
-				rtn = Redisdb.get(df_file)
+				rtn = Redisdb.hget('datastores_account', df_file)
 				if rtn is not None:
 					cls.Datastores_account[acc]['files'] = json.loads(rtn.decode('utf8'))['files']
-					print("files readed", json.loads(rtn.decode('utf8'))['files'])
+					print("datastores account files readed", json.loads(rtn.decode('utf8'))['files'])
 				if os.path.isfile(df_file):
 					print("read", df_file)
 					df = pd.read_parquet(df_file)
@@ -87,10 +87,10 @@ class MarketDataFeeder:
 				if cls.Datastores_pair[pair]['precharged']:
 					continue
 				df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/', '_'))
-				rtn = Redisdb.get(df_file)
+				rtn = Redisdb.hget('datastores_pair', df_file)
 				if rtn is not None:
 					cls.Datastores_pair[pair]['files'] = json.loads(rtn.decode('utf8'))['files']
-					print("files readed", json.loads(rtn.decode('utf8'))['files'])
+					print("datastores pair files readed", json.loads(rtn.decode('utf8'))['files'])
 				if os.path.isfile(df_file):
 					print("read", df_file)
 					try:
@@ -274,7 +274,7 @@ class MarketDataFeeder:
 						# persistence. saving when request is fully served
 						df_file = 'datastores_account_{}.parquet'.format(acc)
 						cls.Datastores_account[acc]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
-						Redisdb.set(df_file, json.dumps({'files': cls.Datastores_account[acc]['files']}))
+						Redisdb.hset('datastores_account', df_file, json.dumps({'files': cls.Datastores_account[acc]['files']}))
 		for req in cls.Requests_pair.items():
 			for pair in req[1]['pairs']:
 				if cls.Datastores_pair[pair]['range'][0] is None:
@@ -293,7 +293,7 @@ class MarketDataFeeder:
 						# persistence. saving when request is fully served
 						df_file = 'datastores_pair_{}_{}.parquet'.format(req[1]['name'], pair.replace('/','_'))
 						cls.Datastores_pair[pair]['df'].to_parquet(df_file, 'fastparquet', 'GZIP')
-						Redisdb.set(df_file, json.dumps({'files': cls.Datastores_pair[pair]['files']}))
+						Redisdb.hset('datastores_pair', df_file, json.dumps({'files': cls.Datastores_pair[pair]['files']}))
 
 	@classmethod
 	def readfile(cls, file):

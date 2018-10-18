@@ -2,7 +2,7 @@
 #
 # (c) 2017 elias/vanissoft
 #
-#
+# remember: BASE/QUOTE
 
 
 

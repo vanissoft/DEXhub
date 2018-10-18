@@ -100,7 +100,7 @@ class Operations_listener():
 	async def get_tradestats_pair(self, data):
 		stats = market_data.Stats()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'],
-							'stats_pair': stats.stats_by_pair[['pair_text', 'pair', 'pays_amount', 'receives_amount', 'price']][:200].to_json(orient='values')}))
+							'stats_pair': stats.stats_by_pair[['pair_text', 'pair', 'pays_amount', 'receives_amount', 'price']][:300].to_json(orient='values')}))
 
 	async def get_tradestats_account(self, data):
 		stats = market_data.Stats()
@@ -118,8 +118,6 @@ class Operations_listener():
 
 	async def open_positions(self, data):
 		rtn = await blockchain.open_positions(data)
-		if 'QNO' in rtn:
-			print()
 		Redisdb.rpush("datafeed", json.dumps({'module': data['module'], 'open_positions': rtn}))
 
 	async def get_last_trades(self, data):
